@@ -1,0 +1,227 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+ <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Lorikeet Spectrum Viewer</title>
+    
+    <!--[if IE]><script language="javascript" type="text/javascript" src="../js/excanvas.min.js"></script><![endif]-->
+	 <script type="text/javascript" src="../js/jquery-3.5.1.min.js"></script>
+	 <script type="text/javascript" src="../js/jquery-ui-1.13.0.slider.min.js"></script>
+	 <script type="text/javascript" src="../js/jquery.flot.js"></script>
+	 <script type="text/javascript" src="../js/jquery.flot.selection.js"></script>
+
+<!--	 <script type="text/javascript" src="../js/specview.js"></script>-->
+	 <script type="text/javascript" src="../js/specview-koina.js"></script>
+	 <script type="text/javascript" src="../js/peptide.js"></script>
+	 <script type="text/javascript" src="../js/aminoacid.js"></script>
+	 <script type="text/javascript" src="../js/ion.js"></script>
+
+	 <link REL="stylesheet" TYPE="text/css" HREF="../css/lorikeet.css">
+	 <link REL="stylesheet" TYPE="text/css" HREF="../css/jquery-ui-1.13.0.slider.min.css">
+    
+    <style type="text/css">
+		span.link {
+			text-decoration: underline;
+			cursor:pointer;
+			color:sienna;
+		}
+	</style>
+
+
+</head>
+
+<body>
+
+<div id="header">
+
+</div>
+<div id="specview_form_div" style="padding:20px; margin:20px; width:500pt; border:1px dotted black; background-color:#FFFFEF;">
+
+<table>
+<tbody>
+<tr>
+	<td><b>Peptide Sequence:</b> </td>
+	<td><input type="text" size="50" name="sequence"/></td>
+</tr>
+
+<tr>
+	<td><input type="button" name="create" value="View Koina Prediction"/></td>
+	<td><input type="button" name="clear" value="Clear Data"/></td>
+</tr>
+
+<tr>
+	<td colspan="2">
+		<b>Spectrum Peaks:</b>
+		<br/>
+		<div class="font_small" style="padding:5px;">
+		283.751526 6.493506<br/>
+		287.601379 11.096813<br/>
+		295.031097 2.801403<br/>
+		</div>
+		<br/>
+		<textarea  id="peaks" rows="20" cols="50"></textarea>
+	</td>
+</tr>
+
+</tbody>
+</table>
+</div>
+
+
+<div id="specview_div" style="margin:20px;">
+	<table cellspacing="0" cellpadding="0">
+		<tbody>
+			<tr>
+				<td align="left"><span id="showInput" class="link" style="padding:10px;display:none;"><b>Change Input</b></span></td>
+			</tr>
+			<tr>
+				<td><div id="specview_plot_div"></div></td>
+			</tr>
+		</tbody>
+	</table>
+</div>
+
+<hr style="margin:50px 0px 0px 0px;"/>
+<div align="left" style="margin-left:20px; margin-bottom:0px;">
+<img src="../images/lorikeet/lorikeet_text_small.png" style="margin:0px; padding:0px"/>
+<span style="margin-left:5px;color:gray;">
+<b>by vsharma@uw.edu</b>
+</span>
+</div>
+<hr style="margin:0px 0px 5px 0px"/>
+<div class="font_small" align="left" style="margin-left:20px; margin-bottom:0px;">
+<a href="http://code.google.com/p/lorikeet/downloads/list">Lorikeet Spectrum Viewer</a> is a Javascript plugin for <a href="http://jquery.com/">JQuery</a> that uses a modified version of the  
+<a href="http://code.google.com/p/flot/">Flot</a> plotting library.
+</div>
+
+
+
+<script type="text/javascript">
+
+$(document).ready(function () {
+	
+	$("input[name='create']").click(function() {
+	
+		$("#specview_div").show();
+		$("#showInput").show();
+		$("#specview_form_div").hide();
+		
+		if(!createSpectrum()) {
+			$("#specview_div").hide();
+			$("#showInput").hide();
+			$("#specview_form_div").show();
+		}
+	});
+	
+	$("input[name='clear']").click(function() {
+		clearFields();
+	});
+	
+	$("#showInput").click(function() {
+		$("#specview_div").hide();
+		$("#showInput").hide();
+		$("#specview_form_div").show();
+	})
+
+});
+
+function clearFields() {
+
+	$('input[name="sequence"]').val("");
+	$("#peaks").val("");
+}
+
+
+function createSpectrum() {
+
+	// first remove the existing spectrum
+	$("#specview_plot_div").html("");
+	
+	// -----------------------------------------------------------
+	// get the sequence
+	// -----------------------------------------------------------
+	var sequence = $('input[name="sequence"]').val();
+	if(!sequence) {
+		alert("Please enter a sequence");
+		return false;
+	}
+
+	// Query Koina
+	$.ajax({
+		url: "https://koina.wilhelmlab.org/v2/models/Prosit_2019_intensity/infer", //
+		type: "POST",
+		contentType: "application/json", // Ensure server expects JSON
+		// processData: false, // Prevent automatic serialization. Uncomment this if not using JSON.stringify()
+		data: JSON.stringify(
+        {
+            "id": "0",
+            "inputs": [
+                {"name": "peptide_sequences", "shape": [1, 1], "datatype": "BYTES", "data": [sequence]},
+                {"name": "precursor_charges", "shape": [1, 1], "datatype": "INT32", "data": [1]},
+                {"name": "collision_energies", "shape": [1, 1], "datatype": "FP32", "data": [25]}
+            ]
+        }),
+		success: function(response) {
+			console.log("Response:", response);
+			parseResponse(sequence, response["outputs"]);
+		},
+		error: function(xhr, status, error) {
+			alert("Error:", error);
+		}
+	});
+	
+	return true;
+}
+
+function parseResponse(sequence, output)
+{
+	console.log("Output: " + output);
+	const annotations = output[0]["data"];
+	const mz = output[1]["data"];
+	const intensities = output[2]["data"];
+
+	console.log("Remove -1 entries, and sort by mz")
+	// Combine the arrays
+	const list = [];
+	for (let j = 0; j < mz.length; j++)
+	{
+		if (mz[j] == -1) continue;
+		list.push({'mz': mz[j], 'intensity': intensities[j], 'annotation': annotations[j]});
+	}
+    // Sort
+	list.sort(function(a, b) {
+		return ((a.mz < b.mz) ? -1 : ((a.mz == b.mz) ? 0 : 1));
+	});
+
+	console.log(list);
+    // Get the peaks
+	const peaks = [];
+	const sortedAnnotations = [];
+	for (let k = 0; k < list.length; k++)
+	{
+		peaks.push([list[k].mz, list[k].intensity]);
+		sortedAnnotations.push(list[k].annotation);
+	}
+	console.log(peaks);
+	console.log(sortedAnnotations);
+
+	// -----------------------------------------------------------
+	// We have all the data. Create the plot
+	// -----------------------------------------------------------
+	$("#specview_plot_div").specviewKoina({sequence: sequence,
+		scanNum: 1111,
+		charge: 1,
+		fileName:'no-file-name',
+		//staticMods: staticMods,
+		//variableMods: varMods,
+		//ntermMod: ntermMod,
+		//ctermMod: ctermMod,
+		peaks: peaks, annotations:sortedAnnotations});
+}
+
+
+</script>
+</body>
+
+</html>
+    
