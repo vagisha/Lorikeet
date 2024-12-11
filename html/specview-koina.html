@@ -185,11 +185,18 @@ function createSpectrum() {
 		return false;
 	}
 	let precursorCharge = parseInt($('input[name="charge"]').val());
-	if (!precursorCharge) precursorCharge = 1;
-	let collisionEnergy = parseInt($('input[name="ce"]').val());
-	if (!collisionEnergy) collisionEnergy = 25;
+	// if (!precursorCharge || precursorCharge < 1)
+	// {
+	// 	alert("Precursor charge must be greater than 0.");
+	// 	return;
+	// }
+	let collisionEnergy = $("#ce_field").is(":visible") ? parseInt($('input[name="ce"]').val()) : null;
+	let instrumentType = $("#instrumentType_field").is(":visible") ? document.getElementById("instrument_type").value : null;
+	let fragmentationType = $("#fragmentationType_field").is(":visible") ? document.getElementById("fragmentation_type").value : null;
+
 	const predictionModel = document.getElementById("prediction_model").value;
-	console.log("Model: " + predictionModel, "; charge: " + precursorCharge + "; CE: " + collisionEnergy);
+	console.log("Model: " + predictionModel, "; charge: " + precursorCharge + "; CE: " + collisionEnergy + "; Instrument type: " + instrumentType + "; Fragmentation type: " + fragmentationType);
+
 	if (!predictionModel)
 	{
 		alert("Please select a prediction model");
@@ -197,6 +204,25 @@ function createSpectrum() {
 	}
 	const URL = "https://koina.wilhelmlab.org/v2/models/" + predictionModel + "/infer";
 	console.log("Koina URL: " + URL);
+
+	const inputs = [];
+	inputs.push({"name": "peptide_sequences", "shape": [1, 1], "datatype": "BYTES", "data": [sequence]});
+	inputs.push({"name": "precursor_charges", "shape": [1, 1], "datatype": "INT32", "data": [precursorCharge]});
+	if (collisionEnergy)
+	{
+		inputs.push({"name": "collision_energies", "shape": [1, 1], "datatype": "FP32", "data": [collisionEnergy]})
+	}
+	if (instrumentType)
+	{
+		inputs.push({"name": "instrument_types", "shape": [1, 1], "datatype": "BYTES", "data": [instrumentType]})
+	}
+	if (fragmentationType)
+	{
+		inputs.push({"name": "fragmentation_types", "shape": [1, 1], "datatype": "BYTES", "data": [fragmentationType]})
+	}
+	// console.log(inputs);
+	// return;
+
 	// Query Koina
 	$.ajax({
 		url: URL,
@@ -206,11 +232,7 @@ function createSpectrum() {
 		data: JSON.stringify(
         {
             "id": "0",
-            "inputs": [
-                {"name": "peptide_sequences", "shape": [1, 1], "datatype": "BYTES", "data": [sequence]},
-                {"name": "precursor_charges", "shape": [1, 1], "datatype": "INT32", "data": [precursorCharge]},
-                {"name": "collision_energies", "shape": [1, 1], "datatype": "FP32", "data": [collisionEnergy]}
-            ]
+            "inputs": inputs
         }),
 		success: function(response) {
 			console.log("Response:", response);
@@ -227,9 +249,28 @@ function createSpectrum() {
 function parseResponse(sequence, output)
 {
 	console.log("Output: " + output);
-	const annotations = output[0]["data"];
-	const mz = output[1]["data"];
-	const intensities = output[2]["data"];
+	let mz, intensities, annotations;
+	for (let i = 0; i < 3; i += 1)
+	{
+		const out_i = output[i];
+		const name = out_i["name"];
+		const data = out_i["data"];
+		if ("mz" === name)
+		{
+			mz = data;
+		}
+		else if ("intensities" === name)
+		{
+			intensities = data
+		}
+		else if ("annotation" === name)
+		{
+			annotations = data
+		}
+	}
+	if (!mz) { alert("Could not parse m/z values from response."); return; }
+	if (!intensities) { alert("Could not parse intensity values from response."); return; }
+	if (!annotations) { alert("Could not parse annotation values from response."); return; }
 
 	console.log("Remove -1 entries, and sort by mz")
 	// Combine the arrays
