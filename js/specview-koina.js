@@ -23,6 +23,7 @@
                 showOptionsTable: true,
                 peakLabelOpt: 'mz',
                 showSequenceInfo: true,
+                enableTooltip: true,
 	            tooltipZIndex: null,
                 minDisplayMz: null,
                 maxDisplayMz: null
@@ -976,7 +977,6 @@
     {
         container.data("ionSeriesMatch", {a: [], b: [], c: [], x: [], y: [], z: []});
         container.data("ionSeriesLabels", {a: [], b: [], c: [], x: [], y: [], z: []});
-        // container.data("ionSeriesAntic", {a: [], b: [], c: [], x: [], y: [], z: []});
     }
 
     function getSeriesMatches(container)

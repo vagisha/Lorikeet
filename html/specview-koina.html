@@ -35,64 +35,83 @@
 <div id="header">
 
 </div>
-<div id="specview_form_div" style="padding:20px; margin:20px; width:500pt; border:1px dotted black; background-color:#FFFFEF;">
+<div id="specview_form_div" style="padding:20px; margin:20px; width:800pt; border:1px dotted black; background-color:#EAEAEA;">
 
 <table>
 <tbody>
 <tr>
-	<td><b>Peptide Sequence:</b> </td>
-	<td><input type="text" size="50" name="sequence"/></td>
+	<td colspan="1"><b>Peptide Sequence:</b> </td><td><input type="text" size="50" name="sequence"/></td>
+</tr>
+<tr>
+	<td><b>Precursor Charge:</b> </td>
+	<td><input type="text" size="10" name="charge" value="2"/>
+	<span style="margin-left: 30px;" id="ce_field"><b>Collision Energy:</b> <input type="text" size="10" name="ce" value="25"/></span></td>
+</tr>
+<tr id="instrumentType_field">
+	<td><b>Instrument Type:</b> </td>
+	<td>
+		<select name="instrument_type" id="instrument_type">
+			<option value="QE" selected>QE</option>
+			<option value="LUMOS">LUMOS</option>
+			<option value="TIMSTOF">TIMSTOF</option>
+			<option value="SCIEXTOF">SCIEXTOF</option>
+		</select>
+	</td>
+</tr>
+<tr id="fragmentationType_field">
+	<td><b>Fragmentation Type:</b> </td>
+	<td>
+		<select name="fragmentation_type" id="fragmentation_type">
+			<option value="HCD" selected>HCD</option>
+			<option value="CID">CID</option>
+		</select>
+	</td>
 </tr>
 
 <tr>
-	<td><input type="button" name="create" value="View Koina Prediction"/></td>
-	<td><input type="button" name="clear" value="Clear Data"/></td>
+	<td><b>Prediction Model</b></td>
+	<td>
+		<select name="prediction_model" id="prediction_model">
+			<option value="Prosit_2019_intensity" selected>Prosit_2019_intensity</option>
+			<option value="Prosit_2020_intensity_CID">Prosit_2020_intensity_CID</option>
+			<option value="Prosit_2020_intensity_TMT">Prosit_2020_intensity_TMT</option>
+			<option value="Prosit_2020_intensity_HCD">Prosit_2020_intensity_HCD</option>
+			<option value="ms2pip_HCD2021">ms2pip_HCD2021</option>
+			<option value="Prosit_2023_intensity_timsTOF">Prosit_2023_intensity_timsTOF</option>
+			<option value="AlphaPeptDeep_ms2_generic">AlphaPeptDeep_ms2_generic</option>
+		</select>
+	</td>
+</tr>
+
+<tr>
+	<td><input type="button" name="create" style="margin: 10px 0 10px 0; padding:5px;" value="View Koina Prediction"/></td>
 </tr>
 
 <tr>
 	<td colspan="2">
-		<b>Spectrum Peaks:</b>
-		<br/>
-		<div class="font_small" style="padding:5px;">
-		283.751526 6.493506<br/>
-		287.601379 11.096813<br/>
-		295.031097 2.801403<br/>
+		<div id="specview_div" style="margin:20px;">
+			<table cellspacing="0" cellpadding="0">
+				<tbody>
+				<tr>
+					<td><div id="specview_plot_div"></div></td>
+				</tr>
+				</tbody>
+			</table>
 		</div>
-		<br/>
-		<textarea  id="peaks" rows="20" cols="50"></textarea>
 	</td>
 </tr>
-
 </tbody>
 </table>
 </div>
 
 
-<div id="specview_div" style="margin:20px;">
-	<table cellspacing="0" cellpadding="0">
-		<tbody>
-			<tr>
-				<td align="left"><span id="showInput" class="link" style="padding:10px;display:none;"><b>Change Input</b></span></td>
-			</tr>
-			<tr>
-				<td><div id="specview_plot_div"></div></td>
-			</tr>
-		</tbody>
-	</table>
-</div>
+
 
 <hr style="margin:50px 0px 0px 0px;"/>
 <div align="left" style="margin-left:20px; margin-bottom:0px;">
 <img src="../images/lorikeet/lorikeet_text_small.png" style="margin:0px; padding:0px"/>
-<span style="margin-left:5px;color:gray;">
-<b>by vsharma@uw.edu</b>
-</span>
 </div>
 <hr style="margin:0px 0px 5px 0px"/>
-<div class="font_small" align="left" style="margin-left:20px; margin-bottom:0px;">
-<a href="http://code.google.com/p/lorikeet/downloads/list">Lorikeet Spectrum Viewer</a> is a Javascript plugin for <a href="http://jquery.com/">JQuery</a> that uses a modified version of the  
-<a href="http://code.google.com/p/flot/">Flot</a> plotting library.
-</div>
 
 
 
@@ -103,26 +122,46 @@ $(document).ready(function () {
 	$("input[name='create']").click(function() {
 	
 		$("#specview_div").show();
-		$("#showInput").show();
-		$("#specview_form_div").hide();
+		// $("#specview_form_div").hide();
 		
 		if(!createSpectrum()) {
 			$("#specview_div").hide();
-			$("#showInput").hide();
-			$("#specview_form_div").show();
+			// $("#specview_form_div").show();
 		}
 	});
-	
-	$("input[name='clear']").click(function() {
-		clearFields();
-	});
-	
-	$("#showInput").click(function() {
-		$("#specview_div").hide();
-		$("#showInput").hide();
-		$("#specview_form_div").show();
-	})
 
+	$("#prediction_model").change(function()
+	{
+		$("#ce_field").hide();
+		$("#instrumentType_field").hide();
+		$("#fragmentationType_field").hide();
+
+		const val = $(this).val();
+		console.log("Selection changed " + val);
+		/*
+			"ms2pip_HCD2021" - precursor charge
+			"Prosit_2020_intensity_CID" - precursor charge
+			"Prosit_2019_intensity" - precursor charge, CE
+			"Prosit_2023_intensity_timsTOF" - precursor charge, CE
+			"Prosit_2020_intensity_HCD" - precursor charge, CE
+			"Prosit_2020_intensity_TMT" - precursor charge, CE, Fragmentation type
+			"AlphaPeptDeep_ms2_generic" - precursor charge, CE, instrument type
+		*/
+		if ("ms2pip_HCD2021" !== val && "Prosit_2020_intensity_CID" !== val)
+		{
+			$("#ce_field").show();
+		}
+		if ("Prosit_2020_intensity_TMT" === val)
+		{
+			$("#fragmentationType_field").show();
+		}
+		if ("AlphaPeptDeep_ms2_generic" === val)
+		{
+			$("#instrumentType_field").show();
+		}
+	});
+
+	$("#prediction_model").val("Prosit_2019_intensity").change();
 });
 
 function clearFields() {
@@ -140,15 +179,27 @@ function createSpectrum() {
 	// -----------------------------------------------------------
 	// get the sequence
 	// -----------------------------------------------------------
-	var sequence = $('input[name="sequence"]').val();
+	const sequence = $('input[name="sequence"]').val();
 	if(!sequence) {
 		alert("Please enter a sequence");
 		return false;
 	}
-
+	let precursorCharge = parseInt($('input[name="charge"]').val());
+	if (!precursorCharge) precursorCharge = 1;
+	let collisionEnergy = parseInt($('input[name="ce"]').val());
+	if (!collisionEnergy) collisionEnergy = 25;
+	const predictionModel = document.getElementById("prediction_model").value;
+	console.log("Model: " + predictionModel, "; charge: " + precursorCharge + "; CE: " + collisionEnergy);
+	if (!predictionModel)
+	{
+		alert("Please select a prediction model");
+		return false;
+	}
+	const URL = "https://koina.wilhelmlab.org/v2/models/" + predictionModel + "/infer";
+	console.log("Koina URL: " + URL);
 	// Query Koina
 	$.ajax({
-		url: "https://koina.wilhelmlab.org/v2/models/Prosit_2019_intensity/infer", //
+		url: URL,
 		type: "POST",
 		contentType: "application/json", // Ensure server expects JSON
 		// processData: false, // Prevent automatic serialization. Uncomment this if not using JSON.stringify()
@@ -157,8 +208,8 @@ function createSpectrum() {
             "id": "0",
             "inputs": [
                 {"name": "peptide_sequences", "shape": [1, 1], "datatype": "BYTES", "data": [sequence]},
-                {"name": "precursor_charges", "shape": [1, 1], "datatype": "INT32", "data": [1]},
-                {"name": "collision_energies", "shape": [1, 1], "datatype": "FP32", "data": [25]}
+                {"name": "precursor_charges", "shape": [1, 1], "datatype": "INT32", "data": [precursorCharge]},
+                {"name": "collision_energies", "shape": [1, 1], "datatype": "FP32", "data": [collisionEnergy]}
             ]
         }),
 		success: function(response) {
