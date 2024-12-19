@@ -16,7 +16,7 @@
 	 <script type="text/javascript" src="../js/aminoacid.js"></script>
 	 <script type="text/javascript" src="../js/ion.js"></script>
 
-	 <link REL="stylesheet" TYPE="text/css" HREF="../css/lorikeet.css">
+	 <link REL="stylesheet" TYPE="text/css" HREF="../css/lorikeet-koina.css">
 	 <link REL="stylesheet" TYPE="text/css" HREF="../css/jquery-ui-1.13.0.slider.min.css">
     
     <style type="text/css">
@@ -100,6 +100,7 @@
 		</div>
 	</td>
 </tr>
+<tr><td colspan="2"><blockquote id="koina_output">hello</blockquote></td></tr>
 </tbody>
 </table>
 </div>
@@ -139,6 +140,7 @@ $(document).ready(function () {
 		const val = $(this).val();
 		console.log("Selection changed " + val);
 		/*
+		    These are the accepted options for the following prediction models
 			"ms2pip_HCD2021" - precursor charge
 			"Prosit_2020_intensity_CID" - precursor charge
 			"Prosit_2019_intensity" - precursor charge, CE
@@ -185,11 +187,6 @@ function createSpectrum() {
 		return false;
 	}
 	let precursorCharge = parseInt($('input[name="charge"]').val());
-	// if (!precursorCharge || precursorCharge < 1)
-	// {
-	// 	alert("Precursor charge must be greater than 0.");
-	// 	return;
-	// }
 	let collisionEnergy = $("#ce_field").is(":visible") ? parseInt($('input[name="ce"]').val()) : null;
 	let instrumentType = $("#instrumentType_field").is(":visible") ? document.getElementById("instrument_type").value : null;
 	let fragmentationType = $("#fragmentationType_field").is(":visible") ? document.getElementById("fragmentation_type").value : null;
@@ -289,13 +286,21 @@ function parseResponse(sequence, output)
     // Get the peaks
 	const peaks = [];
 	const sortedAnnotations = [];
+	let resultString = "";
 	for (let k = 0; k < list.length; k++)
 	{
-		peaks.push([list[k].mz, list[k].intensity]);
-		sortedAnnotations.push(list[k].annotation);
+		const intensity_6 = roundTo(list[k].intensity, 6);
+		if (intensity_6 > 0)
+		{
+			// Do not display peaks that are very low intensity
+			peaks.push([list[k].mz, list[k].intensity]);
+			sortedAnnotations.push(list[k].annotation);
+		}
+		resultString += roundTo(list[k].mz, 2) + ", " + intensity_6 + ", " + list[k].annotation + "</br>";
 	}
 	console.log(peaks);
 	console.log(sortedAnnotations);
+	$("#koina_output").html(resultString);
 
 	// -----------------------------------------------------------
 	// We have all the data. Create the plot
@@ -309,6 +314,26 @@ function parseResponse(sequence, output)
 		//ntermMod: ntermMod,
 		//ctermMod: ctermMod,
 		peaks: peaks, annotations:sortedAnnotations});
+
+
+}
+
+function roundTo(n, digits) {
+	let negative = false;
+	if (digits === undefined) {
+		digits = 0;
+	}
+	if (n < 0) {
+		negative = true;
+		n = n * -1;
+	}
+	const multiplicator = Math.pow(10, digits);
+	n = parseFloat((n * multiplicator).toFixed(11));
+	n = (Math.round(n) / multiplicator).toFixed(digits);
+	if (negative) {
+		n = (n * -1).toFixed(digits);
+	}
+	return n;
 }
 
 

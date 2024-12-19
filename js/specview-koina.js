@@ -62,9 +62,7 @@
             lorikeet_content: "lorikeet_content",
             optionsTable: "optionsTable",
             ionTableLoc1: "ionTableLoc1",
-            ionTableLoc2: "ionTableLoc2",
             viewOptionsDiv: "viewOptionsDiv",
-            moveIonTable: "moveIonTable",
             modInfo: "modInfo",
             ionTableDiv: "ionTableDiv",
             ionTable: "ionTable",
@@ -103,7 +101,7 @@
         var defaultSelectedIons = getDefaultSelectedIons(options);
         //makeOptionsTable(container,[1,2,3], defaultSelectedIons);
 
-        //makeViewingOptions(container, options);
+        makeViewingOptions(container, options);
 
         // if(options.showSequenceInfo) {
         //     showSequenceInfo(container, options);
@@ -1319,53 +1317,60 @@
 
 	var parentTable = '<table cellpadding="0" cellspacing="5" class="lorikeet-outer-table"> ';
 	parentTable += '<tbody> ';
-	parentTable += '<tr> ';
+	//parentTable += '<tr> ';
 
 	// Header
-	parentTable += '<td colspan="3" class="bar"> ';
+	//parentTable += '<td colspan="3" class="bar"> ';
 	// parentTable += '</div> ';
-	parentTable += '</td> ';
-	parentTable += '</tr> ';
+	//parentTable += '</td> ';
+	//parentTable += '</tr> ';
 
-	// options table
-	parentTable += '<tr> ';
-	parentTable += '<td rowspan="'+rowspan+'" valign="top" id="'+getElementId(container, elementIds.optionsTable)+'"> ';
-	parentTable += '</td> ';
+        // placeholders for the ms/ms plot
+        parentTable += '<tr> ';
+        parentTable += '<td style="background-color: white; padding:5px; border:1px dotted #cccccc;" valign="top" align="center"> ';
+        parentTable += '<div id="'+getElementId(container, elementIds.msmsplot)+'" align="bottom" style="width:'+options.width+'px;height:'+options.height+'px;"></div> ';
 
-        if(options.showSequenceInfo) {
-            // placeholder for sequence, m/z, scan number etc
-            parentTable += '<td style="background-color: white; padding:5px; border:1px dotted #cccccc;" valign="bottom" align="center"> ';
-            parentTable += '<div id="'+getElementId(container, elementIds.seqinfo)+'" style="width:100%;"></div> ';
-            // placeholder for file name, scan number and charge
-            parentTable += '<div id="'+getElementId(container, elementIds.fileinfo)+'" style="width:100%;"></div> ';
-            parentTable += '</td> ';
-        }
-
+        // placeholder for viewing options (zoom, plot size etc.)
+        parentTable += '<div id="'+getElementId(container, elementIds.viewOptionsDiv)+'" align="top" style="margin-top:15px;"></div> ';
+        parentTable += '</td> ';
 
         if(options.showIonTable) {
             // placeholder for the ion table
             parentTable += '<td rowspan="'+rowspan+'" valign="top" id="'+getElementId(container, elementIds.ionTableLoc1)+'" > ';
             parentTable += '<div id="'+getElementId(container, elementIds.ionTableDiv)+'">';
-            parentTable += '<span id="'+getElementId(container, elementIds.moveIonTable)+'" class="font_small link">[Click]</span> <span class="font_small">to move table</span>';
+            // parentTable += '<span id="'+getElementId(container, elementIds.moveIonTable)+'" class="font_small link">[Click]</span> <span class="font_small">to move table</span>';
             // placeholder for annotated ion current value
-            parentTable += '<div id="'+getElementId(container, elementIds.anticInfo)+'" style="margin-top:5px;"></div> ';
+            // parentTable += '<div id="'+getElementId(container, elementIds.anticInfo)+'" style="margin-top:5px;"></div> ';
             // placeholder for modifications
-            parentTable += '<div id="'+getElementId(container, elementIds.modInfo)+'" style="margin-top:20px;"></div> ';
+            // parentTable += '<div id="'+getElementId(container, elementIds.modInfo)+'" style="margin-top:20px;"></div> ';
             // placeholder for user-supplied reporter ion masses
-            parentTable += '<div id="'+getElementId(container, elementIds.userReporterIons)+'" style="margin-top:20px;"></div> ';
+            // parentTable += '<div id="'+getElementId(container, elementIds.userReporterIons)+'" style="margin-top:20px;"></div> ';
             parentTable += '</div> ';
             parentTable += '</td> ';
         }
+
         parentTable += '</tr> ';
 
+	// options table
+	// parentTable += '<tr> ';
+	//parentTable += '<td rowspan="'+rowspan+'" valign="top" id="'+getElementId(container, elementIds.optionsTable)+'"> ';
+	//parentTable += '</td> ';
 
-	// placeholders for the ms/ms plot
-	parentTable += '<tr> ';
-	parentTable += '<td style="background-color: white; padding:5px; border:1px dotted #cccccc;" valign="top" align="center"> ';
-	parentTable += '<div id="'+getElementId(container, elementIds.msmsplot)+'" align="bottom" style="width:'+options.width+'px;height:'+options.height+'px;"></div> ';
+        // if(options.showSequenceInfo) {
+        //     // placeholder for sequence, m/z, scan number etc
+        //     parentTable += '<td style="background-color: white; padding:5px; border:1px dotted #cccccc;" valign="bottom" align="center"> ';
+        //     parentTable += '<div id="'+getElementId(container, elementIds.seqinfo)+'" style="width:100%;"></div> ';
+        //     // placeholder for file name, scan number and charge
+        //     parentTable += '<div id="'+getElementId(container, elementIds.fileinfo)+'" style="width:100%;"></div> ';
+        //     parentTable += '</td> ';
+        // }
 
-	// placeholder for viewing options (zoom, plot size etc.)
-	parentTable += '<div id="'+getElementId(container, elementIds.viewOptionsDiv)+'" align="top" style="margin-top:15px;"></div> ';
+
+
+       //  parentTable += '</tr> ';
+
+
+
 
         // placeholder for peak mass error plot
         //parentTable += '<div id="'+getElementId(container, elementIds.massErrorPlot)+'" style="width:'+options.width+'px;height:100px;"></div> ';
@@ -1374,17 +1379,16 @@
 	// if(options.ms1peaks && options.ms1peaks.length > 0) {
 	//     parentTable += '<div id="'+getElementId(container, elementIds.msPlot)+'" style="width:'+options.width+'px;height:100px;"></div> ';
 	// }
-	parentTable += '</td> ';
-	parentTable += '</tr> ';
+
 
 
 	// Footer & placeholder for moving ion table
-	parentTable += '<tr> ';
-	parentTable += '<td colspan="3" class="bar noprint" valign="top" align="center" id="'+getElementId(container, elementIds.ionTableLoc2)+'" > ';
-	parentTable += '<div align="center" style="width:100%;font-size:10pt;"> ';
-	parentTable += '</div> ';
-	parentTable += '</td> ';
-	parentTable += '</tr> ';
+	// parentTable += '<tr> ';
+	// parentTable += '<td colspan="3" class="bar noprint" valign="top" align="center" id="'+getElementId(container, elementIds.ionTableLoc2)+'" > ';
+	// parentTable += '<div align="center" style="width:100%;font-size:10pt;"> ';
+	// parentTable += '</div> ';
+	// parentTable += '</td> ';
+	// parentTable += '</tr> ';
 
 	parentTable += '</tbody> ';
 	parentTable += '</table> ';
@@ -1748,7 +1752,7 @@
 	myContent += 'X:<input id="'+getElementId(container, elementIds.zoom_x)+'" type="checkbox" value="X" checked="checked"/> ';
 	myContent += '&nbsp;Y:<input id="'+getElementId(container, elementIds.zoom_y)+'" type="checkbox" value="Y" /> ';
 	myContent += '&nbsp;<input id="'+getElementId(container, elementIds.resetZoom)+'" type="button" value="Zoom Out" /> ';
-	myContent += '&nbsp;<input id="'+getElementId(container, elementIds.printLink)+'" type="button" value="Print" /> ';
+	// myContent += '&nbsp;<input id="'+getElementId(container, elementIds.printLink)+'" type="button" value="Print" /> ';
 	myContent += '</nobr> ';
 
 	myContent += '&nbsp;&nbsp;';
@@ -1757,16 +1761,6 @@
 	myContent += '<nobr> ';
 	myContent += '<label><input id="'+getElementId(container, elementIds.enableTooltip)+'" type="checkbox">Enable tooltip </label>';
 	myContent += '</nobr> ';
-
-        // mass error plot option
-        myContent += '<nobr>';
-        myContent += '<label><input id="'+getElementId(container, elementIds.massErrorPlot_option)+'" type="checkbox" ';
-        if(options.showMassErrorPlot === true)
-        {
-            myContent += ' checked="checked"';
-        }
-        myContent += '>Plot mass error </label>';
-        myContent += '</nobr>';
 
 	myContent += '<br>';
 
