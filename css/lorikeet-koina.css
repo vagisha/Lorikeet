@@ -66,11 +66,11 @@ div.lorikeet .ionTable {
     border-color:#DDDDDD;
 }
 div.lorikeet .ionTable th {
-    background-color:#BDB76B;
-    border: 1px solid #666666;
+    background-color: #a1a1a1;
+    border: 1px solid #848383;
 }
 div.lorikeet .ionTable td {
-    border: 1px solid #666666;
+    border: 1px solid #a1a1a1;
     text-align: center;
     background-color:#FFFFFF;
     font-size: 8pt;
@@ -79,17 +79,17 @@ div.lorikeet .ionTable td {
 /* style for a cell containing a residue from the sequence */
 div.lorikeet .ionTable td.seq {
     font-weight: bold;
-    background-color:#BDB76B;
+    background-color: #cdcdcd;
 }
 
 /* style for cell containing a modified residue */
 div.lorikeet .ionTable td.modified{
-    background-color:gold;
+    background-color: #bdbdbd;
 }
 
 /* style for cell containing the fragment indices */
 div.lorikeet .ionTable td.numCell {
-    background-color:#F5F5DC;
+    background-color: #fdfdfd;
     color:#777777;
 }
 

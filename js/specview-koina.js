@@ -110,15 +110,13 @@
 	    // showUserReporterIonsInfo(container, options);
         // }
 
-
-
         createPlot(container, getDatasets(container)); // Initial MS/MS Plot
 
         setupInteractions(container, options);
 
-        // if(options.showIonTable) {
-        //     makeIonTable(container);
-        // }
+        if(options.showIonTable) {
+            makeIonTable(container);
+        }
     }
 
     function getDefaultSelectedIons(options)
@@ -421,10 +419,6 @@
 	    container.data("peakLabelTypeChanged", true);
 	    plotAccordingToChoices(container);
 	});
-
-
-	// MOVING THE ION TABLE
-	makeIonTableMovable(container, options);
 
 	// CHANGING THE PLOT SIZE
 	makePlotResizable(container);
@@ -833,142 +827,28 @@
     //-----------------------------------------------
     // SELECTED ION TYPES
     // -----------------------------------------------
-    function getSelectedIonTypes(container) {
+    function getKoinaResultIonTypes(container) {
 
-        var ions = [];
-        var charges = [];
-        $(getElementSelector(container, elementIds.ion_choice)).find("input:checked").each(function () {
-            var key = $(this).attr("id");
-            var tokens = key.split("_");
-            ions.push(tokens[0]);
-            charges.push(tokens[1]);
-        });
+        const annotations = container.data("options").annotations;
 
-        var selected = [];
-            var ion;
-            for (var i = 0; i < ions.length; i += 1) {
-                selected.push(ion = Ion.get(ions[i], charges[i]));
-            }
-
-        return selected;
-    }
-
-    // ---------------------------------------------------------
-    // CALCULATE THEORETICAL MASSES FOR THE SELECTED ION SERIES
-    // ---------------------------------------------------------
-    function calculateTheoreticalSeries(container, selectedIons) {
-
-        if(container.data("massTypeChanged"))
+        const selectedIonTypes = [];
+        const koinaIonTypes = new Set();
+        for (let i = 0; i <  annotations.length; i += 1)
         {
-            // Clear out the theoretical ion series if the selected mass type changed.
-            container.data("ionSeries", {a: [], b: [], c: [], x: [], y: [], z: []});
+            const annotation = annotations[i];
+            const ionType = annotation.charAt(0);
+            const plusIdx = annotation.indexOf('+');
+            const charge = annotation.charAt(plusIdx + 1);
+            koinaIonTypes.add(ionType + "" + charge);
         }
-	if(selectedIons) {
 
-	    var todoIonSeries = [];
-	    var todoIonSeriesData = [];
-            var ionSeries = container.data("ionSeries");
-	    for(var i = 0; i < selectedIons.length; i += 1) {
-		var sion = selectedIons[i];
-		if(sion.type == "a") {
-		    if(ionSeries.a[sion.charge])	continue; // already calculated
-		    else {
-			todoIonSeries.push(sion);
-			ionSeries.a[sion.charge] = [];
-			todoIonSeriesData.push(ionSeries.a[sion.charge]);
-		    }
-		}
-		if(sion.type == "b") {
-		    if(ionSeries.b[sion.charge])	continue; // already calculated
-		    else {
-			todoIonSeries.push(sion);
-			ionSeries.b[sion.charge] = [];
-			todoIonSeriesData.push(ionSeries.b[sion.charge]);
-		    }
-		}
-		if(sion.type == "c") {
-		    if(ionSeries.c[sion.charge])	continue; // already calculated
-		    else {
-			todoIonSeries.push(sion);
-			ionSeries.c[sion.charge] = [];
-			todoIonSeriesData.push(ionSeries.c[sion.charge]);
-		    }
-		}
-		if(sion.type == "x") {
-		    if(ionSeries.x[sion.charge])	continue; // already calculated
-		    else {
-			todoIonSeries.push(sion);
-			ionSeries.x[sion.charge] = [];
-			todoIonSeriesData.push(ionSeries.x[sion.charge]);
-		    }
-		}
-		if(sion.type == "y") {
-		    if(ionSeries.y[sion.charge])	continue; // already calculated
-		    else {
-			todoIonSeries.push(sion);
-			ionSeries.y[sion.charge] = [];
-			todoIonSeriesData.push(ionSeries.y[sion.charge]);
-		    }
-		}
-		if(sion.type == "z") {
-		    if(ionSeries.z[sion.charge])	continue; // already calculated
-		    else {
-			todoIonSeries.push(sion);
-			ionSeries.z[sion.charge] = [];
-			todoIonSeriesData.push(ionSeries.z[sion.charge]);
-		    }
-		}
-	    }
-
-	    if(container.data("options").sequence) {
-
-                var sequence = container.data("options").sequence
-		var massType = getMassType(container);
-
-		for(var i = 1; i < sequence.length; i += 1) {
-
-		    for(var j = 0; j < todoIonSeries.length; j += 1) {
-			var tion = todoIonSeries[j];
-			var ionSeriesData = todoIonSeriesData[j];
-
-                        var ion = Ion.getSeriesIon(tion, container.data("options").peptide, i, massType);
-                        // Put the ion masses in increasing value of m/z, For c-term ions the array will have to be
-                        // populated backwards.
-			if(tion.term == "n")
-                            // Add to end of array
-			    ionSeriesData.push(ion);
-			else if(tion.term == "c")
-                            // Add to beginning of array
-			    ionSeriesData.unshift(ion);
-		    }
-		}
-	    }
-	}
-    }
-
-    function getMassType(container)
-    {
-        return container.find("input[name='"+getRadioName(container, "massTypeOpt")+"']:checked").val();
-    }
-
-    function getMassErrorUnit(container)
-    {
-        return container.find("input[name='"+getRadioName(container, "massErrorUnit")+"']:checked").val();
-    }
-
-    function getPeakAssignmentType(container)
-    {
-        return container.find("input[name='"+getRadioName(container, "peakAssignOpt")+"']:checked").val();
-    }
-
-    // -----------------------------------------------
-    // MATCH THEORETICAL MASSES WITH PEAKS IN THE SCAN
-    // -----------------------------------------------
-    function recalculateFragmentMatches(container) {
-	return (container.data("massErrorChanged") ||
-		container.data("massTypeChanged") ||
-		container.data("peakAssignmentTypeChanged") ||
-		container.data("selectedNeutralLossChanged"));
+        for(const ionStr of koinaIonTypes)
+        {
+            const ion = Ion.get(ionStr.charAt(0), ionStr.charAt(1));
+            selectedIonTypes.push(ion);
+            // console.log("Adding to ion types: " + ion.label);
+        }
+       return selectedIonTypes;
     }
 
     function clearIonSeries(container)
@@ -986,14 +866,14 @@
         const peaks = container.data("options").peaks;
         const annotations = container.data("options").annotations;
 
-        const selectedIonTypes = new Set();
+        const koinaIonTypes = new Set();
         for (let i = 0; i <  peaks.length; i += 1)
         {
             const annotation = annotations[i];
             const ionType = annotation.charAt(0);
             const plusIdx = annotation.indexOf('+');
             const charge = annotation.charAt(plusIdx + 1);
-            selectedIonTypes.add(ionType + "" + charge);
+            koinaIonTypes.add(ionType + "" + charge);
         }
 
         for (let i = 0; i < peaks.length; i += 1)
@@ -1018,12 +898,12 @@
             }
         }
 
-        for(const ionStr of selectedIonTypes)
+        for(const ionStr of koinaIonTypes)
         {
             // selectedIonTypes.push(ion = Ion.get(ionType, charge));
             // const ionStr = selectedIonTypes[j];
             const ion = Ion.get(ionStr.charAt(0), ionStr.charAt(1));
-            console.log("Selection ion: " + ionStr);
+            // console.log("Selection ion: " + ionStr);
             const ionSeriesPeaks = ionSeriesMatch[ion.type][ion.charge];
             if (ionSeriesPeaks)
             {
@@ -1059,67 +939,6 @@
             ionmz = Ion.getIonMzWithLoss(sion, neutralLosses, massType);
         }
         return ionmz;
-    }
-
-    function calculateMatchingPeaks(container, ionSeries, allPeaks) {
-
-        // console.log("calculating matching peaks");
-        var peakIndex = 0;
-
-        var matchData = [];
-        matchData[0] = []; // peaks
-        matchData[1] = []; // labels -- ions;
-
-        for(var i = 0; i < ionSeries.length; i += 1) {
-
-            var sion = ionSeries[i];
-
-            var minIndex = Number.MAX_VALUE;
-            var index = getMatchForIon(sion, matchData, allPeaks, peakIndex, massTolerance, massErrorUnit, peakAssignmentType, null, massType);
-            minIndex = Math.min(minIndex, index);
-
-            peakIndex = minIndex;
-	    }
-
-	    return matchData;
-    }
-
-    // sion -- theoretical ion
-    // matchData -- array to which we will add a peak if there is a match
-    // allPeaks -- array with all the scan peaks
-    // peakIndex -- current index in peaks array
-    // Returns the index of the matching peak, if one is found
-    function getMatchForIon(sion, matchData, allPeaks, peakIndex) {
-
-        sion.match = false; // reset;
-        var ionmz = ionMz(sion, neutralLosses, massType);
-        var peakLabel = getLabel(sion, neutralLosses);
-
-        var __ret = getMatchingPeak(peakIndex, allPeaks, ionmz, massTolerance, massErrorUnit, peakAssignmentType);
-
-        peakIndex = __ret.peakIndex;
-        var bestPeak = __ret.bestPeak;
-
-        // if we found a matching peak for the current ion, save it
-        if(bestPeak) {
-            // console.log("found match "+sion.label+", "+ionmz+";  peak: "+bestPeak[0] + "; theoreticalMz: " + __ret.theoreticalMz);
-            matchData[0].push([bestPeak[0], bestPeak[1], __ret.theoreticalMz]);
-            matchData[1].push(peakLabel);
-            matchData[2] = matchData[2] + bestPeak[1];
-            if(!neutralLosses) {
-                sion.match = true;
-            }
-        }
-
-        return peakIndex;
-    }
-
-    function getMatchingPeakForMz(container, allPeaks, ionMz)
-    {
-        var massError = container.data("options").massError;
-        var massErrorUnit = getMassErrorUnit(container);
-        var peakAssignmentType = getPeakAssignmentType(container);
-        return getMatchingPeak(0, allPeaks, ionMz, massError, massErrorUnit, peakAssignmentType);
     }
 
     function getMatchingPeak(peakIndex, allPeaks, ionmz, massTolerance, toleranceUnit, peakAssignmentType) {
@@ -1407,9 +1226,11 @@
         var options = container.data("options");
 
 	// selected ions
-	var selectedIonTypes = getSelectedIonTypes(container);
-	var ntermIons = getSelectedNtermIons(selectedIonTypes);
-	var ctermIons = getSelectedCtermIons(selectedIonTypes);
+	var selectedIonTypes = getKoinaResultIonTypes(container);
+	var ntermIons = getNtermIons(selectedIonTypes);
+	console.log(ntermIons);
+	var ctermIons = getCtermIons(selectedIonTypes);
+	console.log(ctermIons);
 
 	var myTable = '' ;
 	myTable += '<table id="'+getElementId(container, elementIds.ionTable)+'" cellpadding="2" class="font_small '+elementIds.ionTable+'">';
@@ -1433,9 +1254,11 @@
 	myTable +=  "<tbody>";
 
         var ionSeries = container.data("ionSeries");
+        console.log("IonSereis: " + ionSeries);
 
+        let nval = 100.0;
 	for(var i = 0; i < options.sequence.length; i += 1) {
-            var aaChar = options.sequence.charAt(i);
+       var aaChar = options.sequence.charAt(i);
 	    myTable +=   "<tr>";
 
 	    // nterm ions
@@ -1444,15 +1267,16 @@
 		    var seriesData = getCalculatedSeries(ionSeries, ntermIons[n]);
 		    var cls = "";
 		    var style = "";
-		    if(seriesData[i].match) {
-			cls="matchIon";
-			style="style='background-color:"+Ion.getSeriesColor(ntermIons[n])+";'";
-		    }
-		    else if(seriesData[i].mz < options.peaks[0][0] |
-			    seriesData[i].mz > options.peaks[options.peaks.length - 1][0]) {
-			cls="numCell";
-		    }
-		    myTable +=    "<td class='"+cls+"' "+style+" >" +round(seriesData[i].mz)+  "</td>";
+		    // if(seriesData && seriesData[i].match) {
+			// cls="matchIon";
+			// style="style='background-color:"+Ion.getSeriesColor(ntermIons[n])+";'";
+		    // }
+		    // else if(seriesData && seriesData[i].mz < options.peaks[0][0] |
+			//     seriesData[i].mz > options.peaks[options.peaks.length - 1][0]) {
+			// cls="numCell";
+		    // }
+		    // myTable +=    "<td class='"+cls+"' "+style+" >" +round(seriesData[i].mz)+  "</td>";
+            myTable +=    "<td class='"+cls+"' "+style+" >" +round(nval++)+  "</td>";
 		}
 		else {
 		    myTable +=    "<td>" +"&nbsp;"+  "</td>";
@@ -1460,9 +1284,9 @@
 	    }
 
 	    myTable += "<td class='numCell'>"+(i+1)+"</td>";
-	    if(options.peptide.varMods()[i+1])
-		myTable += "<td class='seq modified'>"+aaChar+"</td>";
-	    else
+	    // if(options.peptide.varMods()[i+1])
+		// myTable += "<td class='seq modified'>"+aaChar+"</td>";
+	    // else
 		myTable += "<td class='seq'>"+aaChar+"</td>";
 	    myTable += "<td class='numCell'>"+(options.sequence.length - i)+"</td>";
 
@@ -1473,15 +1297,16 @@
 		    var idx = options.sequence.length - i - 1;
 		    var cls = "";
 		    var style = "";
-		    if(seriesData[idx].match) {
-			cls="matchIon";
-			style="style='background-color:"+Ion.getSeriesColor(ctermIons[c])+";'";
-		    }
-                    else if(seriesData[idx].mz < options.peaks[0][0] |
-                            seriesData[idx].mz > options.peaks[options.peaks.length - 1][0]) {
-			cls="numCell";
-                    }
-		    myTable +=    "<td class='"+cls+"' "+style+" >" +round(seriesData[idx].mz)+  "</td>";
+		    // if(seriesData[idx].match) {
+			// cls="matchIon";
+			// style="style='background-color:"+Ion.getSeriesColor(ctermIons[c])+";'";
+		    // }
+            //         else if(seriesData[idx].mz < options.peaks[0][0] |
+            //                 seriesData[idx].mz > options.peaks[options.peaks.length - 1][0]) {
+			// cls="numCell";
+            //         }
+		    // myTable +=    "<td class='"+cls+"' "+style+" >" +round(seriesData[idx].mz)+  "</td>";
+            myTable +=    "<td class='"+cls+"' "+style+" >" +round(0.00)+  "</td>";
 		}
 		else {
 		    myTable +=    "<td>" +"&nbsp;"+  "</td>";
@@ -1520,31 +1345,44 @@
 	    return ionSeries.z[ion.charge];
     }
 
-    function makeIonTableMovable(container, options) {
+    function getNtermIons(selectedIonTypes) {
+        var ntermIons = [];
 
-	$(getElementSelector(container, elementIds.moveIonTable)).hover(
-	    function(){
-		$(this).css({cursor:'pointer'}); //mouseover
-	    }
-	);
+        for(var i = 0; i < selectedIonTypes.length; i += 1) {
+            var sion = selectedIonTypes[i];
+            if(sion.type == "a" || sion.type == "b" || sion.type == "c")
+            {
+                ntermIons.push(sion);
+            }
+        }
+        ntermIons.sort(function(m,n) {
+            if(m.type == n.type) {
+                return (m.charge - n.charge);
+            }
+            else {
+                return m.type - n.type;
+            }
+        });
+        return ntermIons;
+    }
 
-	$(getElementSelector(container, elementIds.moveIonTable)).click(function() {
-	    var ionTableDiv = $(getElementSelector(container, elementIds.ionTableDiv));
-	    if(ionTableDiv.is(".moved")) {
-		ionTableDiv.removeClass("moved");
-		ionTableDiv.detach();
-		$(getElementSelector(container, elementIds.ionTableLoc1)).append(ionTableDiv);
-	    }
-	    else {
-		ionTableDiv.addClass("moved");
-		ionTableDiv.detach();
-		$(getElementSelector(container, elementIds.ionTableLoc2)).append(ionTableDiv);
-	    }
+    function getCtermIons(selectedIonTypes) {
+        var ctermIons = [];
 
-	    if ( options.sizeChangeCallbackFunction ) {
-		options.sizeChangeCallbackFunction();
-	    }
-	});
+        for(var i = 0; i < selectedIonTypes.length; i += 1) {
+            var sion = selectedIonTypes[i];
+            if(sion.type == "x" || sion.type == "y" || sion.type == "z")
+                ctermIons.push(sion);
+        }
+        ctermIons.sort(function(m,n) {
+            if(m.type == n.type) {
+                return (m.charge - n.charge);
+            }
+            else {
+                return m.type - n.type;
+            }
+        });
+        return ctermIons;
     }
 
     //---------------------------------------------------------
