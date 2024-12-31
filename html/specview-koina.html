@@ -289,13 +289,13 @@ function parseResponse(sequence, output)
 	let resultString = "";
 	for (let k = 0; k < list.length; k++)
 	{
-		const intensity_6 = roundTo(list[k].intensity, 6);
-		if (intensity_6 > 0)
-		{
+		const intensity_6 = roundTo(list[k].intensity, 4);
+		// if (intensity_6 > 0)
+		// {
 			// Do not display peaks that are very low intensity
 			peaks.push([list[k].mz, list[k].intensity]);
 			sortedAnnotations.push(list[k].annotation);
-		}
+		// }
 		resultString += roundTo(list[k].mz, 2) + ", " + intensity_6 + ", " + list[k].annotation + "</br>";
 	}
 	console.log(peaks);

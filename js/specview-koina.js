@@ -96,9 +96,6 @@
         storeContainerData(container, options);
         initContainer(container);
 
-        var defaultSelectedIons = getDefaultSelectedIons(options);
-        //makeOptionsTable(container,[1,2,3], defaultSelectedIons);
-
         makeViewingOptions(container, options);
 
         createPlot(container, getDatasets(container)); // Initial MS/MS Plot
@@ -108,27 +105,6 @@
         if(options.showIonTable) {
             makeIonTable(container);
         }
-    }
-
-    function getDefaultSelectedIons(options)
-    {
-        var userDefined = false;
-        var defaultSelected = {};
-
-        if(!userDefined)
-        {
-            var selected = [1];
-            if(options.charge)
-            {
-                for (var i = 2; i < options.charge; i += 1)
-                {
-                    selected.push(1);
-                }
-            }
-            defaultSelected['b'] = selected;
-            defaultSelected['y'] = selected;
-        }
-        return defaultSelected;
     }
 
     function storeContainerData(container, options) {
@@ -151,7 +127,7 @@
             maxIntDown = getMaxInt(options.peaks2);   //get max peaks value in down peak list
         }
 
-	var __xrange = getPlotXRange(options);
+	    var __xrange = getPlotXRange(options);
 
 
         var plotOptions =  {
@@ -169,7 +145,7 @@
             xaxis: { tickLength: 3, tickColor: "#000",
                      min: __xrange.xmin,
                      max: __xrange.xmax},
-	}
+	    }
 
         var yaxis = { tickLength: 0, tickColor: "#000",
 		  max: maxInt*1.1,
@@ -202,10 +178,10 @@
             plotOptions['yaxes'] =  yaxes;
             plotOptions.grid.markings = [{yaxis:{from:0, to:0}, color:"#555555", lineWidth:0.5}];
             plotOptions['legend'] = {position: "se"};
-	}
-        else {
-            plotOptions['yaxis'] =  yaxis;
-	}
+        }
+            else {
+                plotOptions['yaxis'] =  yaxis;
+        }
 
         container.data("plotOptions", plotOptions);
         container.data("maxInt", maxInt);
@@ -232,40 +208,40 @@
     // -----------------------------------------------
     function createPlot(container, datasets) {
 
-	var plot;
-	if(!container.data("zoomRange"))
-    {
-        plot = $.plot($(getElementSelector(container, elementIds.msmsplot)), datasets,  container.data("plotOptions"));
-    }
-	else
-	{
-        var zoomRange = container.data("zoomRange");
-        var selectOpts = {};
-	    if($(getElementSelector(container, elementIds.zoom_x)).is(":checked"))
-		selectOpts.xaxis = { min: zoomRange.xaxis.from, max: zoomRange.xaxis.to };
-	    if($(getElementSelector(container, elementIds.zoom_y)).is(":checked"))
-		selectOpts.yaxis = { min: 0, max: zoomRange.yaxis.to };
+        var plot;
+        if(!container.data("zoomRange"))
+        {
+            plot = $.plot($(getElementSelector(container, elementIds.msmsplot)), datasets,  container.data("plotOptions"));
+        }
+        else
+        {
+            var zoomRange = container.data("zoomRange");
+            var selectOpts = {};
+            if($(getElementSelector(container, elementIds.zoom_x)).is(":checked"))
+            selectOpts.xaxis = { min: zoomRange.xaxis.from, max: zoomRange.xaxis.to };
+            if($(getElementSelector(container, elementIds.zoom_y)).is(":checked"))
+            selectOpts.yaxis = { min: 0, max: zoomRange.yaxis.to };
 
-	    plot = $.plot(getElementSelector(container, elementIds.msmsplot), datasets,
-			  $.extend(true, {}, container.data("plotOptions"), selectOpts));
+            plot = $.plot(getElementSelector(container, elementIds.msmsplot), datasets,
+                  $.extend(true, {}, container.data("plotOptions"), selectOpts));
 
-	    // zoom out icon on plot right hand corner
-	    var o = plot.getPlotOffset();
-	    $(getElementSelector(container, elementIds.msmsplot)).append('<div id="'+getElementId(container, elementIds.ms2plot_zoom_out)+'" class="zoom_out_link" style="position:absolute; left:'
-									 + (o.left + plot.width() - 20) + 'px;top:' + (o.top+4) + 'px"></div>');
+            // zoom out icon on plot right hand corner
+            var o = plot.getPlotOffset();
+            $(getElementSelector(container, elementIds.msmsplot)).append('<div id="'+getElementId(container, elementIds.ms2plot_zoom_out)+'" class="zoom_out_link" style="position:absolute; left:'
+                                         + (o.left + plot.width() - 20) + 'px;top:' + (o.top+4) + 'px"></div>');
 
-	    $(getElementSelector(container, elementIds.ms2plot_zoom_out)).click( function() {
-                resetZoom(container);
-	    });
-	}
+            $(getElementSelector(container, elementIds.ms2plot_zoom_out)).click( function() {
+                    resetZoom(container);
+            });
+        }
 
-	// we have re-calculated and re-drawn everything..
-	container.data("massTypeChanged", false);
-	container.data("massErrorChanged",false);
-	container.data("peakAssignmentTypeChanged", false);
-	container.data("peakLabelTypeChanged", false);
-	container.data("selectedNeutralLossChanged", false);
-	container.data("plot", plot);
+        // we have re-calculated and re-drawn everything..
+        container.data("massTypeChanged", false);
+        container.data("massErrorChanged",false);
+        container.data("peakAssignmentTypeChanged", false);
+        container.data("peakLabelTypeChanged", false);
+        container.data("selectedNeutralLossChanged", false);
+        container.data("plot", plot);
 
     }
 
@@ -305,104 +281,103 @@
     // -----------------------------------------------
     function setupInteractions (container, options) {
 
-	// ZOOMING
-	$(getElementSelector(container, elementIds.msmsplot)).bind("plotselected", function (event, ranges) {
-	    container.data("zoomRange", ranges);
-	    createPlot(container, getDatasets(container));
-	});
-
-	// ZOOM AXES
-	$(getElementSelector(container, elementIds.zoom_x)).click(function() {
-	    resetAxisZoom(container);
-	});
-	$(getElementSelector(container, elementIds.zoom_y)).click(function() {
-	    resetAxisZoom(container);
-	});
-
-	// RESET ZOOM
-	$(getElementSelector(container, elementIds.resetZoom)).click(function() {
-	    resetZoom(container);
-	});
-
-	// UPDATE
-	$(getElementSelector(container, elementIds.update)).click(function() {
-	    container.data("zoomRange", null); // zoom out fully
-	    // setMassError(container);
-	    plotAccordingToChoices(container);
-	});
-
-	// TOOLTIPS
-	$(getElementSelector(container, elementIds.msmsplot)).bind("plothover", function (event, pos, item) {
-	    displayTooltip(item, container, options, "m/z", "intensity");
-	});
-	$(getElementSelector(container, elementIds.enableTooltip)).click(function() {
-	    $(getElementSelector(container, elementIds.msmstooltip)).remove();
-	});
-
-	// SHOW / HIDE ION SERIES; UPDATE ON MASS TYPE CHANGE;
-	// PEAK ASSIGNMENT TYPE CHANGED; PEAK LABEL TYPE CHANGED
-	var ionChoiceContainer = $(getElementSelector(container, elementIds.ion_choice));
-	ionChoiceContainer.find("input").click(function() {
-	    plotAccordingToChoices(container);
+        // ZOOMING
+        $(getElementSelector(container, elementIds.msmsplot)).bind("plotselected", function (event, ranges) {
+            container.data("zoomRange", ranges);
+            createPlot(container, getDatasets(container));
         });
 
-        $(getElementSelector(container, elementIds.immoniumIons)).click(function() {
-	    plotAccordingToChoices(container);
+        // ZOOM AXES
+        $(getElementSelector(container, elementIds.zoom_x)).click(function() {
+            resetAxisZoom(container);
+        });
+        $(getElementSelector(container, elementIds.zoom_y)).click(function() {
+            resetAxisZoom(container);
         });
 
-        $(getElementSelector(container, elementIds.reporterIons)).click(function() {
-	    plotAccordingToChoices(container);
+        // RESET ZOOM
+        $(getElementSelector(container, elementIds.resetZoom)).click(function() {
+            resetZoom(container);
         });
 
-        $(getElementSelector(container, elementIds.labelPrecursor)).click(function() {
-	    plotAccordingToChoices(container);
-	});
-
-        // Peak detect checkbox
-        $(getElementSelector(container, elementIds.peakDetect)).click(function() {
-	    container.data("peakAssignmentTypeChanged", true);
-	    plotAccordingToChoices(container);
+        // UPDATE
+        $(getElementSelector(container, elementIds.update)).click(function() {
+            container.data("zoomRange", null); // zoom out fully
+            // setMassError(container);
+            plotAccordingToChoices(container);
         });
 
-	container.find("input[name='"+getRadioName(container, "peakAssignOpt")+"']").click(function() {
-	    container.data("peakAssignmentTypeChanged", true);
-	    plotAccordingToChoices(container);
-	});
+        // TOOLTIPS
+        $(getElementSelector(container, elementIds.msmsplot)).bind("plothover", function (event, pos, item) {
+            displayTooltip(item, container, options, "m/z", "intensity");
+        });
+        $(getElementSelector(container, elementIds.enableTooltip)).click(function() {
+            $(getElementSelector(container, elementIds.msmstooltip)).remove();
+        });
 
-        $(getElementSelector(container, elementIds.deselectIonsLink)).click(function() {
-	    ionChoiceContainer.find("input:checkbox:checked").each(function() {
-		$(this).attr('checked', "");
-	    });
+        // SHOW / HIDE ION SERIES; UPDATE ON MASS TYPE CHANGE;
+        // PEAK ASSIGNMENT TYPE CHANGED; PEAK LABEL TYPE CHANGED
+        var ionChoiceContainer = $(getElementSelector(container, elementIds.ion_choice));
+        ionChoiceContainer.find("input").click(function() {
+            plotAccordingToChoices(container);
+            });
 
-	    plotAccordingToChoices(container);
-	});
+            $(getElementSelector(container, elementIds.immoniumIons)).click(function() {
+            plotAccordingToChoices(container);
+            });
 
-	container.find("input[name='"+getRadioName(container, "peakLabelOpt")+"']").click(function() {
-	    container.data("peakLabelTypeChanged", true);
-	    plotAccordingToChoices(container);
-	});
+            $(getElementSelector(container, elementIds.reporterIons)).click(function() {
+            plotAccordingToChoices(container);
+            });
 
-	// CHANGING THE PLOT SIZE
-	makePlotResizable(container);
+            $(getElementSelector(container, elementIds.labelPrecursor)).click(function() {
+            plotAccordingToChoices(container);
+        });
 
-	// PRINT SPECTRUM
-	printPlot(container);
+            // Peak detect checkbox
+            $(getElementSelector(container, elementIds.peakDetect)).click(function() {
+            container.data("peakAssignmentTypeChanged", true);
+            plotAccordingToChoices(container);
+            });
 
+        container.find("input[name='"+getRadioName(container, "peakAssignOpt")+"']").click(function() {
+            container.data("peakAssignmentTypeChanged", true);
+            plotAccordingToChoices(container);
+        });
+
+            $(getElementSelector(container, elementIds.deselectIonsLink)).click(function() {
+            ionChoiceContainer.find("input:checkbox:checked").each(function() {
+            $(this).attr('checked', "");
+            });
+
+            plotAccordingToChoices(container);
+        });
+
+        container.find("input[name='"+getRadioName(container, "peakLabelOpt")+"']").click(function() {
+            container.data("peakLabelTypeChanged", true);
+            plotAccordingToChoices(container);
+        });
+
+        // CHANGING THE PLOT SIZE
+        makePlotResizable(container);
+
+        // PRINT SPECTRUM
+        printPlot(container);
     }
 
     function resetZoom(container) {
-	container.data("zoomRange", null);
-	// setMassError(container);
-	createPlot(container, getDatasets(container));
+        container.data("zoomRange", null);
+        // setMassError(container);
+        createPlot(container, getDatasets(container));
     }
 
     function plotAccordingToChoices(container) {
         var data = getDatasets(container);
 
-	if (data.length > 0) {
-            createPlot(container, data);
-            makeIonTable(container);
-        }
+        if (data.length > 0) {
+                createPlot(container, data);
+                makeIonTable(container);
+            }
     }
 
     function resetAxisZoom(container) {
@@ -519,7 +494,6 @@
             plotAccordingToChoices(container);
             window.print();
 
-
             // remove the class after printing so that if the user prints
             // via the browser's print menu the whole page is printed
             container.find(".bar").removeClass('noprint');
@@ -528,8 +502,6 @@
             $(getElementSelector(container, elementIds.ionTableLoc2)).removeClass('noprint');
             $(getElementSelector(container, elementIds.viewOptionsDiv)).removeClass('noprint');
             $("#tempPrintDiv").siblings().removeClass("noprint");
-
-
 
             plotOptions.series.peaks.print = false; // draw the labels in the canvas
             plotAccordingToChoices(container);
@@ -550,7 +522,6 @@
 
         // selected ions
 	    // var selectedIonTypes = getSelectedIonTypes(container);
-
 	    // calculateTheoreticalSeries(container);
 
 	    // add the un-annotated peaks
@@ -560,7 +531,6 @@
         var data = [];
         data.push(peaks1);
         //data.push(peaks2);
-
 
         // add the annotated peaks
         var seriesMatches = getSeriesMatches(container);
@@ -615,14 +585,6 @@
         const annotations = container.data("options").annotations;
 
         const koinaIonTypes = new Set();
-        for (let i = 0; i <  peaks.length; i += 1)
-        {
-            const annotation = annotations[i];
-            const ionType = annotation.charAt(0);
-            const plusIdx = annotation.indexOf('+');
-            const charge = annotation.charAt(plusIdx + 1);
-            koinaIonTypes.add(ionType + "" + charge);
-        }
 
         for (let i = 0; i < peaks.length; i += 1)
         {
@@ -631,18 +593,21 @@
             const plusIdx = annotation.indexOf('+');
             const charge = annotation.charAt(plusIdx + 1);
             console.log("Annotation: " + annotation + "; type: " + ionType + "; charge: " + charge);
+            koinaIonTypes.add(ionType + "" + charge);
 
             const series = ionSeriesMatch[ionType];
-            const seriesAnnotation = ionSeriesLabels[ionType];
+            const seriesLabel = ionSeriesLabels[ionType];
             if (series)
             {
-                if (!series[charge])
-                {
-                    series[charge] = [];
-                    seriesAnnotation[charge] = [];
+                const intensity = peaks[i][1];
+                if (round(intensity) > 0) {
+                    if (!series[charge]) {
+                        series[charge] = [];
+                        seriesLabel[charge] = [];
+                    }
+                    series[charge].push(peaks[i]);
+                    seriesLabel[charge].push(annotation);
                 }
-                series[charge].push(peaks[i]);
-                seriesAnnotation[charge].push(annotation);
             }
         }
 
@@ -744,10 +709,9 @@
 
         myTable +=  "<tbody>";
 
-        var ionSeries = container.data("ionSeries");
-        console.log("IonSereis: " + ionSeries);
+        var ionSeriesMatch = container.data("ionSeriesMatch"); // container.data("ionSeries");
+        console.log("ionSeriesMatch: " + ionSeriesMatch);
 
-        let nval = 100.0;
         for(var i = 0; i < options.sequence.length; i += 1) {
            var aaChar = options.sequence.charAt(i);
             myTable +=   "<tr>";
@@ -755,10 +719,21 @@
             // nterm ions
             for(var n = 0; n < ntermIons.length; n += 1) {
                 if(i < options.sequence.length - 1) {
-                    var seriesData = getCalculatedSeries(ionSeries, ntermIons[n]);
-                    var cls = "";
-                    var style = "";
-                    myTable +=    "<td class='"+cls+"' "+style+" >" +round(nval++)+  "</td>";
+                    const seriesData = getSeriesMatch(ionSeriesMatch, ntermIons[n]);
+                    let cls = "";
+                    let style = "";
+                    if (seriesData[i]) {
+                        let mz = seriesData[i][0];
+                        if (mz) {
+                            cls = "matchIon";
+                            style = "style='background-color:" + Ion.getSeriesColor(ntermIons[n]) + ";'";
+                        } else {
+                            cls = "numCell";
+                        }
+                        if (!mz) mz = 0;
+                        myTable += "<td class='" + cls + "' " + style + " >" + round(mz) + "</td>";
+                        // myTable +=    "<td class='"+cls+"' "+style+" >" +round(nval++)+  "</td>";
+                    }
                 }
                 else {
                     myTable +=    "<td>" +"&nbsp;"+  "</td>";
@@ -772,7 +747,7 @@
             // cterm ions
             for(var c = 0; c < ctermIons.length; c += 1) {
                 if(i > 0) {
-                    var seriesData = getCalculatedSeries(ionSeries, ctermIons[c]);
+                    var seriesData = getSeriesMatch(ionSeriesMatch, ctermIons[c]);
                     var idx = options.sequence.length - i - 1;
                     var cls = "";
                     var style = "";
@@ -820,6 +795,22 @@
         if(ion.type == "z")
             return ionSeries.z[ion.charge];
     }
+
+    function getSeriesMatch(ionSeriesMatch, ion) {
+        if(ion.type == "a")
+            return ionSeriesMatch.a[ion.charge];
+        if(ion.type == "b")
+            return ionSeriesMatch.b[ion.charge];
+        if(ion.type == "c")
+            return ionSeriesMatch.c[ion.charge];
+        if(ion.type == "x")
+            return ionSeriesMatch.x[ion.charge];
+        if(ion.type == "y")
+            return ionSeriesMatch.y[ion.charge];
+        if(ion.type == "z")
+            return ionSeriesMatch.z[ion.charge];
+    }
+
 
     function getNtermIons(selectedIonTypes) {
         var ntermIons = [];
