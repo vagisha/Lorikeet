@@ -82,6 +82,10 @@
 
     function init(parent_container, options) {
 
+        // TODO: Add support for modifications. Check which Koina models allow modifications.
+        var peptide = new Peptide(options.sequence, [], [], 0, 0, 0);
+        options.peptide = peptide;
+
         if(!options.minDisplayMz)
         {
             options.minDisplayMz = options.peaks[0][0];
@@ -525,8 +529,8 @@
         var options = container.data("options");
 
         // selected ions
-	    // var selectedIonTypes = getSelectedIonTypes(container);
-	    // calculateTheoreticalSeries(container);
+	    var selectedIonTypes = getKoinaResultIonTypes(container);
+	    calculateTheoreticalSeries(container, selectedIonTypes);
 
 	    // add the un-annotated peaks
         //added two peak lists into data
@@ -585,6 +589,7 @@
 
         clearIonSeries(container);
 
+        const ionSeries = container.data("ionSeries"); // theoretical ion series
         const ionSeriesMatch = container.data("ionSeriesMatch");
         const ionSeriesLabels = container.data("ionSeriesLabels");
         const peaks = container.data("options").peaks;
@@ -597,25 +602,32 @@
             const annotation = annotations[i];
             const ionType = annotation.charAt(0);
             const plusIdx = annotation.indexOf('+');
+            const ionIdx = annotation.substring(1, plusIdx);
             const charge = annotation.charAt(plusIdx + 1);
-            console.log("Annotation: " + annotation + "; type: " + ionType + "; charge: " + charge);
+            console.log("Annotation: " + annotation + "; type: " + ionType + "; charge: " + charge + "; index: " + ionIdx);
 
             // if (ionSeriesMatch[ionType][charge]) continue;
 
             koinaIonTypes.add(ionType + "" + charge);
 
-            const series = ionSeriesMatch[ionType];
+            const seriesMatch = ionSeriesMatch[ionType];
             const seriesLabel = ionSeriesLabels[ionType];
-            if (series)
+            if (seriesMatch)
             {
                 const intensity = peaks[i][1];
                 if (round(intensity) > 0) {
-                    if (!series[charge]) {
-                        series[charge] = [];
+                    if (!seriesMatch[charge]) {
+                        seriesMatch[charge] = [];
                         seriesLabel[charge] = [];
                     }
-                    series[charge].push(peaks[i]);
+                    seriesMatch[charge].push(peaks[i]);
                     seriesLabel[charge].push(annotation);
+
+                    if (ionSeries[ionType] && ionSeries[ionType][charge] && ionSeries[ionType][charge][ionIdx])
+                    {
+                        // ionSeries[ionType][charge][ionIdx] = Ion; e.g. b5+2; iontype = 'b', charge = 2, ionIdx = 5
+                        ionSeries[ionType][charge][ionIdx].match = true;
+                    }
                 }
             }
         }
@@ -634,6 +646,100 @@
         }
         return dataSeries;
     }
+
+    // ---------------------------------------------------------
+    // CALCULATE THEORETICAL MASSES FOR THE SELECTED ION SERIES
+    // ---------------------------------------------------------
+    function calculateTheoreticalSeries(container, selectedIons) {
+
+        if(container.data("massTypeChanged"))
+        {
+            // Clear out the theoretical ion series if the selected mass type changed.
+            container.data("ionSeries", {a: [], b: [], c: [], x: [], y: [], z: []});
+        }
+        if(selectedIons) {
+
+            var todoIonSeries = [];
+            var todoIonSeriesData = [];
+            var ionSeries = container.data("ionSeries");
+            for(var i = 0; i < selectedIons.length; i += 1) {
+                var sion = selectedIons[i];
+                if(sion.type == "a") {
+                    if(ionSeries.a[sion.charge])	continue; // already calculated
+                    else {
+                        todoIonSeries.push(sion);
+                        ionSeries.a[sion.charge] = [];
+                        todoIonSeriesData.push(ionSeries.a[sion.charge]);
+                    }
+                }
+                if(sion.type == "b") {
+                    if(ionSeries.b[sion.charge])	continue; // already calculated
+                    else {
+                        todoIonSeries.push(sion);
+                        ionSeries.b[sion.charge] = [];
+                        todoIonSeriesData.push(ionSeries.b[sion.charge]);
+                    }
+                }
+                if(sion.type == "c") {
+                    if(ionSeries.c[sion.charge])	continue; // already calculated
+                    else {
+                        todoIonSeries.push(sion);
+                        ionSeries.c[sion.charge] = [];
+                        todoIonSeriesData.push(ionSeries.c[sion.charge]);
+                    }
+                }
+                if(sion.type == "x") {
+                    if(ionSeries.x[sion.charge])	continue; // already calculated
+                    else {
+                        todoIonSeries.push(sion);
+                        ionSeries.x[sion.charge] = [];
+                        todoIonSeriesData.push(ionSeries.x[sion.charge]);
+                    }
+                }
+                if(sion.type == "y") {
+                    if(ionSeries.y[sion.charge])	continue; // already calculated
+                    else {
+                        todoIonSeries.push(sion);
+                        ionSeries.y[sion.charge] = [];
+                        todoIonSeriesData.push(ionSeries.y[sion.charge]);
+                    }
+                }
+                if(sion.type == "z") {
+                    if(ionSeries.z[sion.charge])	continue; // already calculated
+                    else {
+                        todoIonSeries.push(sion);
+                        ionSeries.z[sion.charge] = [];
+                        todoIonSeriesData.push(ionSeries.z[sion.charge]);
+                    }
+                }
+            }
+
+            if(container.data("options").sequence) {
+
+                const sequence = container.data("options").sequence
+                const massType = "mono"; // getMassType(container);
+
+                for(var i = 1; i < sequence.length; i += 1) {
+
+                    for(var j = 0; j < todoIonSeries.length; j += 1) {
+                        var tion = todoIonSeries[j];
+                        var ionSeriesData = todoIonSeriesData[j];
+
+                        var ion = Ion.getSeriesIon(tion, container.data("options").peptide, i, massType);
+                        // Put the ion masses in increasing value of m/z, For c-term ions the array will have to be
+                        // populated backwards.
+                        if(tion.term == "n")
+                            // Add to end of array
+                            ionSeriesData.push(ion);
+                        else if(tion.term == "c")
+                            // Add to beginning of array
+                            ionSeriesData.unshift(ion);
+                    }
+                }
+            }
+        }
+    }
+
 
     // -----------------------------------------------
     // INITIALIZE THE CONTAINER
@@ -718,8 +824,8 @@
 
         myTable +=  "<tbody>";
 
-        var ionSeriesMatch = container.data("ionSeriesMatch"); // container.data("ionSeries");
-        console.log("ionSeriesMatch: " + ionSeriesMatch);
+        // var ionSeriesMatch = container.data("ionSeriesMatch");
+        const ionSeries = container.data("ionSeries");
 
         for(var i = 0; i < options.sequence.length; i += 1) {
            var aaChar = options.sequence.charAt(i);
@@ -728,21 +834,18 @@
             // nterm ions
             for(var n = 0; n < ntermIons.length; n += 1) {
                 if(i < options.sequence.length - 1) {
-                    const seriesData = getSeriesMatch(ionSeriesMatch, ntermIons[n]);
-                    let cls = "";
-                    let style = "";
-                    if (seriesData[i]) {
-                        let mz = seriesData[i][0];
-                        if (mz) {
-                            cls = "matchIon";
-                            style = "style='background-color:" + Ion.getSeriesColor(ntermIons[n]) + ";'";
-                        } else {
-                            cls = "numCell";
-                        }
-                        if (!mz) mz = 0;
-                        myTable += "<td class='" + cls + "' " + style + " >" + round(mz) + "</td>";
-                        // myTable +=    "<td class='"+cls+"' "+style+" >" +round(nval++)+  "</td>";
+                    var seriesData = getCalculatedSeries(ionSeries, ntermIons[n]);
+                    var cls = "";
+                    var style = "";
+                    if(seriesData[i].match) {
+                        cls="matchIon";
+                        style="style='background-color:"+Ion.getSeriesColor(ntermIons[n])+";'";
                     }
+                    else if(seriesData[i].mz < options.peaks[0][0] |
+                        seriesData[i].mz > options.peaks[options.peaks.length - 1][0]) {
+                        cls="numCell";
+                    }
+                    myTable +=    "<td class='"+cls+"' "+style+" >" +round(seriesData[i].mz)+  "</td>";
                 }
                 else {
                     myTable +=    "<td>" +"&nbsp;"+  "</td>";
@@ -756,20 +859,20 @@
             // cterm ions
             for(var c = 0; c < ctermIons.length; c += 1) {
                 if(i > 0) {
-                    var seriesData = getSeriesMatch(ionSeriesMatch, ctermIons[c]);
+                    var seriesData = getCalculatedSeries(ionSeries, ctermIons[c]);
                     var idx = options.sequence.length - i - 1;
                     var cls = "";
                     var style = "";
-                    // if(seriesData[idx].match) {
-                    // cls="matchIon";
-                    // style="style='background-color:"+Ion.getSeriesColor(ctermIons[c])+";'";
-                    // }
-                    //         else if(seriesData[idx].mz < options.peaks[0][0] |
-                    //                 seriesData[idx].mz > options.peaks[options.peaks.length - 1][0]) {
-                    // cls="numCell";
-                    //         }
-                    // myTable +=    "<td class='"+cls+"' "+style+" >" +round(seriesData[idx].mz)+  "</td>";
-                    myTable +=    "<td class='"+cls+"' "+style+" >" +round(0.00)+  "</td>";
+                    if(seriesData[idx].match) {
+                        cls="matchIon";
+                        style="style='background-color:"+Ion.getSeriesColor(ctermIons[c])+";'";
+                    }
+                    else if(seriesData[idx].mz < options.peaks[0][0] |
+                                    seriesData[idx].mz > options.peaks[options.peaks.length - 1][0]) {
+                    cls="numCell";
+                    }
+                    myTable +=    "<td class='"+cls+"' "+style+" >" +round(seriesData[idx].mz)+  "</td>";
+                    // myTable +=    "<td class='"+cls+"' "+style+" >" +round(0.00)+  "</td>";
                 }
                 else {
                     myTable +=    "<td>" +"&nbsp;"+  "</td>";
