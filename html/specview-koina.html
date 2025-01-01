@@ -20,11 +20,28 @@
 	 <link REL="stylesheet" TYPE="text/css" HREF="../css/jquery-ui-1.13.0.slider.min.css">
     
     <style type="text/css">
+		body {font-family: sans-serif;}
 		span.link {
 			text-decoration: underline;
 			cursor:pointer;
 			color:sienna;
 		}
+
+		 #koina_results_table table {
+			 border-collapse: collapse;
+			 background-color: white;
+		 }
+		 #koina_results_table th {
+			 background-color: #a1a1a1;
+			 border: 1px solid #848383;
+			 padding: 10px;
+		 }
+		 #koina_results_table td {
+			 border: 1px solid #848383;
+			 text-align: center;
+			 background-color:#FFFFFF;
+			 padding:5px;
+		 }
 	</style>
 
 
@@ -35,12 +52,12 @@
 <div id="header">
 
 </div>
-<div id="specview_form_div" style="padding:20px; margin:20px; width:800pt; border:1px dotted black; background-color:#EAEAEA;">
+<div id="specview_form_div" style="padding:20px; margin:20px; border:1px dotted black; background-color:#EAEAEA;">
 
 <table>
 <tbody>
 <tr>
-	<td colspan="1"><b>Peptide Sequence:</b> </td><td><input type="text" size="50" name="sequence"/></td>
+	<td colspan="1"><b>Peptide Sequence:</b> </td><td><input type="text" size="50" name="sequence"/> e.g. AAAAAKAKM</td>
 </tr>
 <tr>
 	<td><b>Precursor Charge:</b> </td>
@@ -85,12 +102,12 @@
 </tr>
 
 <tr>
-	<td><input type="button" name="create" style="margin: 10px 0 10px 0; padding:5px;" value="View Koina Prediction"/></td>
+	<td><input type="button" name="create" style="margin: 10px 0 10px 0; padding:5px;font-size: larger; background-color: lightslategray; color:white;" value="View Koina Prediction"/></td>
 </tr>
 
 <tr>
 	<td colspan="2">
-		<div id="specview_div" style="margin:20px;">
+		<div id="specview_div" style="margin:0px;">
 			<table cellspacing="0" cellpadding="0">
 				<tbody>
 				<tr>
@@ -101,7 +118,11 @@
 		</div>
 	</td>
 </tr>
-<tr><td colspan="2"><blockquote id="koina_output">hello</blockquote></td></tr>
+<!--<tr><td colspan="2"><blockquote id="koina_output"></blockquote></td></tr>-->
+<tr><td colspan="2">
+	<div style="margin-top:20px; font-weight: bold; font-size: larger" id="koina_results_table_title">Koina Results</div>
+	<div id="koina_results_table"></div>
+</td></tr>
 </tbody>
 </table>
 </div>
@@ -120,9 +141,11 @@
 <script type="text/javascript">
 
 $(document).ready(function () {
-	
+
+	$("#koina_results_table_title").hide();
+
 	$("input[name='create']").click(function() {
-	
+
 		$("#specview_div").show();
 		// $("#specview_form_div").hide();
 		
@@ -292,20 +315,24 @@ function parseResponse(sequence, output)
 	const peaks = [];
 	const sortedAnnotations = [];
 	let resultString = "";
+	let resultTable = "<table ><tr><th>m/z</th><th>Intensity</th><th>Ion</th></tr><tbody>";
 	for (let k = 0; k < list.length; k++)
 	{
-		const intensity_6 = roundTo(list[k].intensity, 4);
-		// if (intensity_6 > 0)
-		// {
-			// Do not display peaks that are very low intensity
-			peaks.push([list[k].mz, list[k].intensity]);
-			sortedAnnotations.push(list[k].annotation);
-		// }
-		resultString += roundTo(list[k].mz, 2) + ", " + intensity_6 + ", " + list[k].annotation + "</br>";
+		const intensity_6 = roundTo(list[k].intensity, 6);
+		const mz_4 = roundTo(list[k].mz, 4);
+
+		peaks.push([list[k].mz, list[k].intensity]);
+		sortedAnnotations.push(list[k].annotation);
+
+		resultString += mz_4 + ", " + intensity_6 + ", " + list[k].annotation + "</br>";
+		resultTable += "<tr><td>" + mz_4 + "</td><td>" + intensity_6 + "</td><td>" + list[k].annotation + "</td></tr>";
 	}
 	console.log(peaks);
 	console.log(sortedAnnotations);
-	$("#koina_output").html(resultString);
+	resultTable += "</tbody></table>"
+	// $("#koina_output").html(resultString);
+	$("#koina_results_table_title").show();
+	$("#koina_results_table").html(resultTable);
 
 	// -----------------------------------------------------------
 	// We have all the data. Create the plot

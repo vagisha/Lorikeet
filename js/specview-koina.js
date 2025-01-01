@@ -16,8 +16,8 @@
                 peaks: [],
                 annotations: [],
                 sparsePeaks: null,
-                width: 700, 	// width of the ms/ms plot
-                height: 450, 	// height of the ms/ms plot
+                width: 800, 	// width of the ms/ms plot
+                height: 600, 	// height of the ms/ms plot
                 showIonTable: true,
                 showViewingOptions: true,
                 showOptionsTable: true,
