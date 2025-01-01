@@ -96,6 +96,10 @@
         storeContainerData(container, options);
         initContainer(container);
 
+        // var defaultSelectedIons = getDefaultSelectedIons(options);
+        //makeOptionsTable(container,[1,2,3], defaultSelectedIons);
+
+
         makeViewingOptions(container, options);
 
         createPlot(container, getDatasets(container)); // Initial MS/MS Plot
@@ -579,6 +583,8 @@
     {
         const dataSeries = [];
 
+        clearIonSeries(container);
+
         const ionSeriesMatch = container.data("ionSeriesMatch");
         const ionSeriesLabels = container.data("ionSeriesLabels");
         const peaks = container.data("options").peaks;
@@ -593,6 +599,9 @@
             const plusIdx = annotation.indexOf('+');
             const charge = annotation.charAt(plusIdx + 1);
             console.log("Annotation: " + annotation + "; type: " + ionType + "; charge: " + charge);
+
+            // if (ionSeriesMatch[ionType][charge]) continue;
+
             koinaIonTypes.add(ionType + "" + charge);
 
             const series = ionSeriesMatch[ionType];
