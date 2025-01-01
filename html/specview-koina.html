@@ -80,6 +80,7 @@
 			<option value="Prosit_2023_intensity_timsTOF">Prosit_2023_intensity_timsTOF</option>
 			<option value="AlphaPeptDeep_ms2_generic">AlphaPeptDeep_ms2_generic</option>
 		</select>
+		<span><a href="" id="documentation_link">Documentation</a></span>
 	</td>
 </tr>
 
@@ -161,6 +162,10 @@ $(document).ready(function () {
 		{
 			$("#instrumentType_field").show();
 		}
+
+		// Example: https://koina.wilhelmlab.org/docs#post-/Prosit_2019_intensity/infer
+		let href = "https://koina.wilhelmlab.org/docs#post-/" + val + "/infer";
+		$("#documentation_link").attr("href", href);
 	});
 
 	$("#prediction_model").val("Prosit_2019_intensity").change();
