@@ -42,6 +42,53 @@
 			 background-color:#FFFFFF;
 			 padding:5px;
 		 }
+		#loading-indicator {
+			position: fixed;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			background-color: rgba(0, 0, 0, 0.8);
+			color: white;
+			padding: 20px;
+			border-radius: 5px;
+			font-size: 18px;
+			display: none;
+		}
+		/* Animation for the loading dots */
+		#loading-indicator span {
+			animation: dots 1.5s infinite;
+		}
+
+		#loading-indicator span:nth-child(2) {
+			animation-delay: 0.2s;
+		}
+
+		#loading-indicator span:nth-child(3) {
+			animation-delay: 0.4s;
+		}
+
+		@keyframes dots {
+			0% {
+				opacity: 0;
+			}
+			50% {
+				opacity: 1;
+			}
+			100% {
+				opacity: 0;
+			}
+		}
+		/* Styles for the mask */
+		#page-mask {
+			position: fixed;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			background-color: rgba(0, 0, 0, 0.5);
+			z-index: 9998;
+			display: none;
+		}
 	</style>
 
 
@@ -57,7 +104,7 @@
 <table>
 <tbody>
 <tr>
-	<td colspan="1"><b>Peptide Sequence:</b> </td><td><input type="text" size="50" name="sequence"/> e.g. AAAAAKAKM</td>
+	<td colspan="1"><b>Peptide Sequence:</b> </td><td><input type="text" size="50" name="sequence"/> e.g. AAAAAKAK</td>
 </tr>
 <tr>
 	<td><b>Precursor Charge:</b> </td>
@@ -125,9 +172,9 @@
 </td></tr>
 </tbody>
 </table>
+	<div id="page-mask"></div>
+	<div id="loading-indicator">Loading<span>.</span><span>.</span><span>.</span></div>
 </div>
-
-
 
 
 <hr style="margin:50px 0px 0px 0px;"/>
@@ -143,14 +190,20 @@
 $(document).ready(function () {
 
 	$("#koina_results_table_title").hide();
+	$("#loading-indicator").hide();
+	$("#page-mask").hide();
 
 	$("input[name='create']").click(function() {
 
 		$("#specview_div").show();
+		$("#page-mask").show();
+		$("#loading-indicator").show();
 		// $("#specview_form_div").hide();
 		
 		if(!createSpectrum()) {
 			$("#specview_div").hide();
+			$("#page-mask").hide();
+			$("#loading-indicator").hide();
 			// $("#specview_form_div").show();
 		}
 	});
@@ -205,6 +258,8 @@ function createSpectrum() {
 
 	// first remove the existing spectrum
 	$("#specview_plot_div").html("");
+	$("#koina_results_table").html("");
+	$("#koina_results_table_title").hide();
 	
 	// -----------------------------------------------------------
 	// get the sequence
@@ -261,10 +316,13 @@ function createSpectrum() {
         }),
 		success: function(response) {
 			console.log("Response:", response);
+			$("#page-mask").hide();
+			$("#loading-indicator").hide();
 			parseResponse(sequence, response["outputs"]);
 		},
 		error: function(xhr, status, error) {
 			alert("Error:", error);
+			$("#loading-indicator").hide();
 		}
 	});
 	
