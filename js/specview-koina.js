@@ -207,8 +207,10 @@
         return maxInt;
     }
 
-    function round(number) {
-	    return number.toFixed(4);
+    function round(number, precision) {
+        precision = precision === undefined ? 4 : precision;
+        const factor = Math.pow(10, precision);
+        return Math.round(number * factor) / factor;
     }
 
     // -----------------------------------------------
@@ -602,7 +604,7 @@
             const annotation = annotations[i];
             const ionType = annotation.charAt(0);
             const plusIdx = annotation.indexOf('+');
-            const ionIdx = annotation.substring(1, plusIdx);
+            const ionIdx = parseInt(annotation.substring(1, plusIdx)) - 1; // 0-based index in sequence for storing
             const charge = annotation.charAt(plusIdx + 1);
             console.log("Annotation: " + annotation + "; type: " + ionType + "; charge: " + charge + "; index: " + ionIdx);
 
@@ -615,7 +617,7 @@
             if (seriesMatch)
             {
                 const intensity = peaks[i][1];
-                if (round(intensity) > 0) {
+                if (round(intensity, 6) > 0) {
                     if (!seriesMatch[charge]) {
                         seriesMatch[charge] = [];
                         seriesLabel[charge] = [];
@@ -625,6 +627,7 @@
 
                     if (ionSeries[ionType] && ionSeries[ionType][charge] && ionSeries[ionType][charge][ionIdx])
                     {
+                        console.log("Its a match!!!");
                         // ionSeries[ionType][charge][ionIdx] = Ion; e.g. b5+2; iontype = 'b', charge = 2, ionIdx = 5
                         ionSeries[ionType][charge][ionIdx].match = true;
                     }
@@ -838,6 +841,8 @@
                     var cls = "";
                     var style = "";
                     if(seriesData[i].match) {
+                        const sion = seriesData[i];
+                        console.log("Making ion cell for " + sion.label + ", " + sion.charge + ", " + sion.mz);
                         cls="matchIon";
                         style="style='background-color:"+Ion.getSeriesColor(ntermIons[n])+";'";
                     }

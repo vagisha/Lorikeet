@@ -384,7 +384,13 @@ function parseResponse(sequence, output)
 		sortedAnnotations.push(list[k].annotation);
 
 		resultString += mz_4 + ", " + intensity_6 + ", " + list[k].annotation + "</br>";
-		resultTable += "<tr><td>" + mz_4 + "</td><td>" + intensity_6 + "</td><td>" + list[k].annotation + "</td></tr>";
+		if (intensity_6 > 0) {
+			resultTable += "<tr style='font-weight: bold;'><td>" + mz_4 + "</td><td>" + intensity_6 + "</td><td>" + list[k].annotation + "</td></tr>";
+		}
+		else
+		{
+			resultTable += "<tr><td>" + mz_4 + "</td><td>" + intensity_6 + "</td><td>" + list[k].annotation + "</td></tr>";
+		}
 	}
 	console.log(peaks);
 	console.log(sortedAnnotations);
@@ -409,22 +415,11 @@ function parseResponse(sequence, output)
 
 }
 
-function roundTo(n, digits) {
-	let negative = false;
-	if (digits === undefined) {
-		digits = 0;
-	}
-	if (n < 0) {
-		negative = true;
-		n = n * -1;
-	}
-	const multiplicator = Math.pow(10, digits);
-	n = parseFloat((n * multiplicator).toFixed(11));
-	n = (Math.round(n) / multiplicator).toFixed(digits);
-	if (negative) {
-		n = (n * -1).toFixed(digits);
-	}
-	return n;
+function roundTo(number, precision) {
+	precision = precision === undefined ? 4 : precision;
+	const factor = Math.pow(10, precision);
+	number = Math.round(number * factor) / factor;
+	return number.toFixed(precision); // Returns a string representing a number in fixed-point notation.
 }
 
 
