@@ -141,6 +141,10 @@
 			<option value="Prosit_2020_intensity_TMT">Prosit_2020_intensity_TMT</option>
 			<option value="Prosit_2020_intensity_HCD">Prosit_2020_intensity_HCD</option>
 			<option value="ms2pip_HCD2021">ms2pip_HCD2021</option>
+			<option value="ms2pip_timsTOF2023">ms2pip_timsTOF2023</option>
+			<option value="ms2pip_TTOF5600">ms2pip_TTOF5600</option>
+			<option value="ms2pip_timsTOF2024">ms2pip_timsTOF2024</option>
+			<option value="ms2pip_CID_TMT">ms2pip_CID_TMT</option>
 			<option value="Prosit_2023_intensity_timsTOF">Prosit_2023_intensity_timsTOF</option>
 			<option value="AlphaPeptDeep_ms2_generic">AlphaPeptDeep_ms2_generic</option>
 		</select>
@@ -226,7 +230,12 @@ $(document).ready(function () {
 			"Prosit_2020_intensity_TMT" - precursor charge, CE, Fragmentation type
 			"AlphaPeptDeep_ms2_generic" - precursor charge, CE, instrument type
 		*/
-		if ("ms2pip_HCD2021" !== val && "Prosit_2020_intensity_CID" !== val)
+		if ("ms2pip_HCD2021" !== val
+				&& "ms2pip_timsTOF2023" !== val
+				&& "ms2pip_TTOF5600" !== val
+				&& "ms2pip_timsTOF2024" !== val
+				&& "ms2pip_CID_TMT" !== val
+				&& "Prosit_2020_intensity_CID" !== val)
 		{
 			$("#ce_field").show();
 		}
@@ -264,11 +273,12 @@ function createSpectrum() {
 	// -----------------------------------------------------------
 	// get the sequence
 	// -----------------------------------------------------------
-	const sequence = $('input[name="sequence"]').val();
+	let sequence = $('input[name="sequence"]').val();
 	if(!sequence) {
 		alert("Please enter a sequence");
 		return false;
 	}
+
 	let precursorCharge = parseInt($('input[name="charge"]').val());
 	let collisionEnergy = $("#ce_field").is(":visible") ? parseInt($('input[name="ce"]').val()) : null;
 	let instrumentType = $("#instrumentType_field").is(":visible") ? document.getElementById("instrument_type").value : null;
@@ -283,7 +293,7 @@ function createSpectrum() {
 		return false;
 	}
 	const URL = "https://koina.wilhelmlab.org/v2/models/" + predictionModel + "/infer";
-	console.log("Koina URL: " + URL);
+	console.log("Koina URL: " + URL + "; Sequence: " + sequence);
 
 	const inputs = [];
 	inputs.push({"name": "peptide_sequences", "shape": [1, 1], "datatype": "BYTES", "data": [sequence]});
@@ -321,13 +331,30 @@ function createSpectrum() {
 			parseResponse(sequence, response["outputs"]);
 		},
 		error: function(xhr, status, error) {
-			alert("Error:", error);
+			console.log("An error occurred. Error:" + error + "; Status: " + status);
 			$("#loading-indicator").hide();
 			$("#page-mask").hide();
+			if (xhr.responseText) {
+				try {
+					const jsonResponse = JSON.parse(xhr.responseText);
+					console.log("JSON Response:", jsonResponse);
+				} catch (e) {
+					console.error("Failed to parse JSON:", e);
+					console.error("Raw Response Text:", xhr.responseText);
+				}
+			} else {
+				console.warn("No responseText available. It might be a network error or server issue.");
+			}
 		}
 	});
 	
 	return true;
+}
+
+function parsePeptideSequence(sequence)
+{
+	// Use a regular expression to remove modifications like [UNIMOD:XX]
+	return sequence.replace(/\[UNIMOD:\d+\]/gi, '');
 }
 
 function parseResponse(sequence, output)
@@ -361,7 +388,7 @@ function parseResponse(sequence, output)
 	const list = [];
 	for (let j = 0; j < mz.length; j++)
 	{
-		if (mz[j] == -1) continue;
+		if (mz[j] < 0) continue;
 		list.push({'mz': mz[j], 'intensity': intensities[j], 'annotation': annotations[j]});
 	}
     // Sort
@@ -380,11 +407,11 @@ function parseResponse(sequence, output)
 		const intensity_6 = roundTo(list[k].intensity, 6);
 		const mz_4 = roundTo(list[k].mz, 4);
 
-		peaks.push([list[k].mz, list[k].intensity]);
-		sortedAnnotations.push(list[k].annotation);
-
 		resultString += mz_4 + ", " + intensity_6 + ", " + list[k].annotation + "</br>";
-		if (intensity_6 > 0) {
+		if (intensity_6 > 0)
+		{
+			peaks.push([list[k].mz, list[k].intensity]);
+			sortedAnnotations.push(list[k].annotation);
 			resultTable += "<tr style='font-weight: bold;'><td>" + mz_4 + "</td><td>" + intensity_6 + "</td><td>" + list[k].annotation + "</td></tr>";
 		}
 		else
@@ -402,7 +429,9 @@ function parseResponse(sequence, output)
 	// -----------------------------------------------------------
 	// We have all the data. Create the plot
 	// -----------------------------------------------------------
-	$("#specview_plot_div").specviewKoina({sequence: sequence,
+	const sequenceNoMods = parsePeptideSequence(sequence);
+	console.log("sequence without mods: " + sequenceNoMods);
+	$("#specview_plot_div").specviewKoina({sequence: sequenceNoMods,
 		scanNum: 1111,
 		charge: 1,
 		fileName:'no-file-name',
