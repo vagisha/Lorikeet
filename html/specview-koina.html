@@ -136,16 +136,17 @@
 	<td><b>Prediction Model</b></td>
 	<td>
 		<select name="prediction_model" id="prediction_model">
-			<option value="Prosit_2019_intensity" selected>Prosit_2019_intensity</option>
+			<!--<option value="UniSpec" selected>UniSpec</option>-->
+			<option value="Prosit_2019_intensity">Prosit_2019_intensity</option>
 			<option value="Prosit_2020_intensity_CID">Prosit_2020_intensity_CID</option>
 			<option value="Prosit_2020_intensity_TMT">Prosit_2020_intensity_TMT</option>
 			<option value="Prosit_2020_intensity_HCD">Prosit_2020_intensity_HCD</option>
+			<option value="Prosit_2023_intensity_timsTOF">Prosit_2023_intensity_timsTOF</option>
 			<option value="ms2pip_HCD2021">ms2pip_HCD2021</option>
 			<option value="ms2pip_timsTOF2023">ms2pip_timsTOF2023</option>
-			<option value="ms2pip_TTOF5600">ms2pip_TTOF5600</option>
 			<option value="ms2pip_timsTOF2024">ms2pip_timsTOF2024</option>
+			<option value="ms2pip_TTOF5600">ms2pip_TTOF5600</option>
 			<option value="ms2pip_CID_TMT">ms2pip_CID_TMT</option>
-			<option value="Prosit_2023_intensity_timsTOF">Prosit_2023_intensity_timsTOF</option>
 			<option value="AlphaPeptDeep_ms2_generic">AlphaPeptDeep_ms2_generic</option>
 		</select>
 		<span><a href="" id="documentation_link">Documentation</a></span>
@@ -243,7 +244,7 @@ $(document).ready(function () {
 		{
 			$("#fragmentationType_field").show();
 		}
-		if ("AlphaPeptDeep_ms2_generic" === val)
+		if ("AlphaPeptDeep_ms2_generic" === val || "UniSpec" === val)
 		{
 			$("#instrumentType_field").show();
 		}
