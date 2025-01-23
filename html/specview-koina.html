@@ -191,10 +191,13 @@
 <table>
 <tbody>
 <tr>
-	<td colspan="1"><b>Peptide Sequence:</b> </td>
+	<td colspan="1" valign="top"><b>Peptide Sequence:</b> </td>
 	<td>
-		<input type="text" size="50" name="sequence" id="peptideSequence"/> e.g. AAAAAKAK
-        <div style="margin-bottom:10px;"><span id="addModsButton" style="color:red; text-decoration:underline; font-size: smaller; cursor: pointer;">[Add Modifications]</span></div>
+		<input type="text" size="50" name="sequence" id="peptideSequence"/> <span style="font-size:0.7em">e.g. AAAAAKAK</span>
+        <div style="margin-bottom:10px;">
+			<span id="addModsButton" style="color:red; text-decoration:underline; font-size: smaller; cursor: pointer;">[Modifications]</span>
+			<span id="modifiedSequence" style="margin-left:10px; font-size: small;"></span>
+		</div>
     </td>
 </tr>
 <tr>
@@ -360,7 +363,7 @@ $(document).ready(function () {
 		$("#documentation_link").attr("href", href);
 	});
 
-	$("#prediction_model").val("Prosit_2019_intensity").change();
+	$("#prediction_model").val("ms2pip_timsTOF2024").change(); // Default selected prediction model
 });
 
 function clearFields() {
@@ -398,11 +401,14 @@ function createSpectrum() {
 		alert("Please select a prediction model");
 		return false;
 	}
+
+	const modifiedSequence = getModifiedSequence(sequence);
+	const inputSequence = modifiedSequence.length > 0 ? modifiedSequence : sequence; // This is the input to Koina
 	const URL = "https://koina.wilhelmlab.org/v2/models/" + predictionModel + "/infer";
-	console.log("Koina URL: " + URL + "; Sequence: " + sequence);
+	console.log("Koina URL: " + URL + "; Sequence: " + inputSequence);
 
 	const inputs = [];
-	inputs.push({"name": "peptide_sequences", "shape": [1, 1], "datatype": "BYTES", "data": [sequence]});
+	inputs.push({"name": "peptide_sequences", "shape": [1, 1], "datatype": "BYTES", "data": [inputSequence]});
 	inputs.push({"name": "precursor_charges", "shape": [1, 1], "datatype": "INT32", "data": [precursorCharge]});
 	if (collisionEnergy)
 	{
@@ -457,7 +463,7 @@ function createSpectrum() {
 	return true;
 }
 
-function parsePeptideSequence(sequence)
+function removeModifications(sequence)
 {
 	// Use a regular expression to remove modifications like [UNIMOD:XX]
 	return sequence.replace(/\[UNIMOD:\d+\]/gi, '');
@@ -532,20 +538,52 @@ function parseResponse(sequence, output)
 	$("#koina_results_table_title").show();
 	$("#koina_results_table").html(resultTable);
 
-	// -----------------------------------------------------------
 	// We have all the data. Create the plot
-	// -----------------------------------------------------------
-	const sequenceNoMods = parsePeptideSequence(sequence);
+	createLorikeetPlot(sequence, peaks, sortedAnnotations);
+}
+
+function createLorikeetPlot(sequence, peaks, sortedAnnotations)
+{
+	const sequenceNoMods = removeModifications(sequence);
 	console.log("sequence without mods: " + sequenceNoMods);
+	// Get the selected modifications in a format that can be passed to Lorikeet.
+
+	const varMods = generateVariableModsForLorikeet(sequence);
+
 	$("#specview_plot_div").specviewKoina({sequence: sequenceNoMods,
 		scanNum: 1111,
 		charge: 1,
 		fileName:'no-file-name',
 		//staticMods: staticMods,
-		//variableMods: varMods,
+		variableMods: varMods,
 		//ntermMod: ntermMod,
 		//ctermMod: ctermMod,
 		peaks: peaks, annotations:sortedAnnotations});
+}
+
+function generateVariableModsForLorikeet(peptide)
+{
+	const variableMods = [];
+
+	peptide.split('').forEach((aminoAcid, index) => {
+		const combobox = document.getElementById(`combo-${index}`); // Get the combobox for this amino acid
+		if (combobox && combobox.value) {
+			// Get the selected option from the combobox
+			const selectedOption = combobox.selectedOptions[0];
+
+			// Parse the modification mass from the data attribute
+			const modMass = parseFloat(selectedOption.dataset.mass);
+
+			// Add the modification to the variableMods array
+			variableMods.push({
+				index: index + 1, // 1-based index
+				modMass: modMass,
+				aminoAcid: aminoAcid
+			});
+		}
+	});
+
+	return variableMods;
 }
 
 function roundTo(number, precision) {
@@ -606,6 +644,12 @@ saveModsButton.addEventListener('click', () => {
 	const sequence = peptideInput.value.trim().toUpperCase();
 	if (sequence) {
 		saveValues(sequence);
+		const modifiedPeptide = getModifiedSequence(sequence);
+		console.log("Modified peptide: " + modifiedPeptide);
+		const modifiedSequenceSpan = document.getElementById('modifiedSequence');
+		modifiedSequenceSpan.textContent = (modifiedPeptide.length > 0)
+				? "Modified peptide: " + modifiedPeptide // Update the span with the modified sequence
+				: '';
 	}
 	modsPopup.classList.remove('visible');
 	$("#page-mask").hide();
@@ -687,6 +731,22 @@ function restoreValues(peptide) {
 	});
 }
 
+function getModifiedSequence(peptide)
+{
+	let modifiedPeptide = ''; // Initialize the modified peptide sequence
+
+	peptide.split('').forEach((aminoAcid, index) => {
+		const combobox = document.getElementById(`combo-${index}`); // Get the combobox for this amino acid
+		if (combobox && combobox.value) {
+			// If a modification is selected, append it in the format AminoAcid[UNIMOD:ID]
+			modifiedPeptide += `${aminoAcid}[UNIMOD:${combobox.value}]`;
+		} else {
+			// If no modification is selected, just append the amino acid
+			modifiedPeptide += aminoAcid;
+		}
+	});
+	return modifiedPeptide.length > peptide.length ? modifiedPeptide : '';
+}
 
 </script>
 </body>

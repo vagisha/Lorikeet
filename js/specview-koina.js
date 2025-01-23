@@ -18,6 +18,7 @@
                 sparsePeaks: null,
                 width: 800, 	// width of the ms/ms plot
                 height: 600, 	// height of the ms/ms plot
+                variableMods: [],
                 showIonTable: true,
                 showViewingOptions: true,
                 showOptionsTable: true,
@@ -82,8 +83,21 @@
 
     function init(parent_container, options) {
 
-        // TODO: Add support for modifications. Check which Koina models allow modifications.
-        var peptide = new Peptide(options.sequence, [], [], 0, 0, 0);
+        // Read the variable modifications
+        const parsedVarMods = [];
+        for(let i = 0; i < options.variableMods.length; i += 1) {
+            // position: 14, modMass: 16.0, aminoAcid: 'M'
+            const mod = options.variableMods[i];
+            parsedVarMods[i] = new VariableModification(
+                mod.index,
+                mod.modMass,
+                AminoAcid.get(mod.aminoAcid),
+                mod.losses
+            );
+        }
+        options.variableMods = parsedVarMods;
+
+        var peptide = new Peptide(options.sequence, [], options.variableMods, 0, 0, 0);
         options.peptide = peptide;
 
         if(!options.minDisplayMz)
