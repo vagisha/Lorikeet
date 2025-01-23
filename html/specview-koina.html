@@ -227,7 +227,7 @@
 </tr>
 
 <tr>
-	<td><b>Prediction Model</b></td>
+	<td><b>Prediction Model:</b></td>
 	<td>
 		<select name="prediction_model" id="prediction_model">
 			<!--<option value="UniSpec" selected>UniSpec</option>-->
@@ -291,7 +291,7 @@
 		<table id="modificationsTable"></table>
 	</div>
 	<div class="popup-footer">
-		<button id="saveModsButton" class="popup-save">Save</button>
+		<button id="saveModsButton" class="popup-save">OK</button>
 		<button id="cancelModsButton" class="popup-cancel">Cancel</button>
 	</div>
 </div>
@@ -306,6 +306,8 @@ $(document).ready(function () {
 	$("#koina_results_table_title").hide();
 	$("#loading-indicator").hide();
 	$("#page-mask").hide();
+
+	loadUnimodModifications("../resources/unimod-small.xml");
 
 	$("input[name='create']").click(function() {
 
@@ -594,24 +596,10 @@ function roundTo(number, precision) {
 }
 
 // PTMs table
-const ptmTable = {
-	acetylation: { name: 'Acetylation', unimodId: 1, mass: 42.011 },
-	phosphorylation: { name: 'Phosphorylation', unimodId: 21, mass: 79.966 },
-	methylation: { name: 'Methylation', unimodId: 34, mass: 14.016 },
-	hydroxylation: { name: 'Hydroxylation', unimodId: 35, mass: 15.995 },
-	oxidation: { name: 'Oxidation', unimodId: 36, mass: 15.995 },
-	ubiquitination: { name: 'Ubiquitination', unimodId: 37, mass: 114.043 },
-	sumoylation: { name: 'Sumoylation', unimodId: 41, mass: 213.156 }
-};
+const ptmTable = {};
 
 // Amino acid to PTM mapping
-const ptmLookup = {
-	A: ['acetylation', 'phosphorylation'],
-	F: ['methylation', 'hydroxylation'],
-	I: ['oxidation'],
-	K: ['ubiquitination', 'acetylation', 'sumoylation']
-	// Add other amino acids and their PTMs as needed
-};
+const ptmLookup = {};
 
 const peptideInput = document.getElementById('peptideSequence');
 const addModsButton = document.getElementById('addModsButton');
@@ -747,6 +735,57 @@ function getModifiedSequence(peptide)
 	});
 	return modifiedPeptide.length > peptide.length ? modifiedPeptide : '';
 }
+
+async function loadUnimodModifications(xmlFilePath) {
+	try {
+		// Fetch the XML file
+		const response = await fetch(xmlFilePath);
+		const xmlText = await response.text();
+
+		// Parse the XML
+		const parser = new DOMParser();
+		const xmlDoc = parser.parseFromString(xmlText, "application/xml");
+
+		// Process each <umod:mod> element
+		const mods = xmlDoc.getElementsByTagName("umod:mod");
+		for (let mod of mods) {
+			const title = mod.getAttribute("title");
+			const fullName = mod.getAttribute("full_name");
+			const recordId = mod.getAttribute("record_id");
+			const delta = mod.getElementsByTagName("umod:delta")[0];
+			const monoMass = parseFloat(delta.getAttribute("mono_mass"));
+
+			// Add to the ptmTable
+			ptmTable[title.toLowerCase()] = {
+				name: fullName,
+				unimodId: recordId,
+				mass: monoMass,
+			};
+
+			// Process each <umod:specificity> element
+			const specificities = mod.getElementsByTagName("umod:specificity");
+			for (let spec of specificities) {
+				const site = spec.getAttribute("site");
+				const hidden = spec.getAttribute("hidden");
+
+				// Skip hidden modifications
+				if (hidden === "1") continue;
+
+				// Add to the ptmLookup
+				if (!ptmLookup[site]) {
+					ptmLookup[site] = [];
+				}
+				ptmLookup[site].push(title.toLowerCase());
+			}
+		}
+
+		console.log("PTM Table:", ptmTable);
+		console.log("PTM Lookup:", ptmLookup);
+	} catch (error) {
+		console.error("Error loading or parsing Unimod file:", error);
+	}
+}
+
 
 </script>
 </body>
