@@ -167,6 +167,32 @@
 			background-color: #d32f2f;
 		}
 
+		.rounded-button {
+			margin: 10px 0;
+			padding: 10px 15px; /* Adjust padding for a nicer look */
+			font-size: 1.05em;
+			font-weight: bold;
+			background-color: lightslategray;
+			color: white;
+			border: none; /* Remove default border */
+			border-radius: 10px; /* Rounded corners */
+			box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.2); /* Create 3D effect with shadow */
+			cursor: pointer; /* Pointer cursor on hover */
+			transition: all 0.2s ease-in-out; /* Smooth transition effect */
+		}
+
+		.rounded-button:hover {
+			background-color: slategray; /* Slightly darker shade on hover */
+			box-shadow: 0px 6px 8px rgba(0, 0, 0, 0.3); /* Enhance shadow on hover */
+			/* transform: translateY(-2px); /* Lift the button slightly */
+		}
+
+		.rounded-button:active {
+			background-color: darkslategray; /* Even darker on click */
+			box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.2); /* Reduce shadow on click */
+			/* transform: translateY(1px); /* Simulate press effect */
+		}
+
 		#modificationsTable table {
 			width: 100%;
 			border-collapse: collapse;
@@ -196,7 +222,8 @@
 		<input type="text" size="50" name="sequence" id="peptideSequence"/> <span style="font-size:0.7em">e.g. AAAAAKAK</span>
         <div style="margin-bottom:10px;">
 			<span id="addModsButton" style="color:red; text-decoration:underline; font-size: smaller; cursor: pointer;">[Modifications]</span>
-			<span id="modifiedSequence" style="margin-left:10px; font-size: small;"></span>
+			<div id="modifiedSequenceMassDiff" style="font-size: small;"></div>
+			<div id="modifiedSequenceUnimod" style="font-size: small;"></div>
 		</div>
     </td>
 </tr>
@@ -248,9 +275,13 @@
 </tr>
 
 <tr>
-	<td><input type="button" name="create" style="margin: 10px 0 10px 0; padding:5px;font-size: larger; background-color: lightslategray; color:white;" value="View Koina Prediction"/></td>
+	<td colspan="2"><div style="margin-top:10px;"><input type="button" name="create" class="rounded-button" value="View Koina Prediction"/></div></td>
 </tr>
+</tbody>
+</table>
 
+<table>
+<tbody>
 <tr>
 	<td colspan="2">
 		<div id="specview_div" style="margin:0px;">
@@ -271,8 +302,10 @@
 </td></tr>
 </tbody>
 </table>
-	<div id="page-mask"></div>
-	<div id="loading-indicator">Loading<span>.</span><span>.</span><span>.</span></div>
+
+<div id="page-mask"></div>
+<div id="loading-indicator">Loading<span>.</span><span>.</span><span>.</span></div>
+
 </div>
 
 
@@ -632,12 +665,20 @@ saveModsButton.addEventListener('click', () => {
 	const sequence = peptideInput.value.trim().toUpperCase();
 	if (sequence) {
 		saveValues(sequence);
-		const modifiedPeptide = getModifiedSequence(sequence);
-		console.log("Modified peptide: " + modifiedPeptide);
-		const modifiedSequenceSpan = document.getElementById('modifiedSequence');
-		modifiedSequenceSpan.textContent = (modifiedPeptide.length > 0)
-				? "Modified peptide: " + modifiedPeptide // Update the span with the modified sequence
+		const modifiedPeptideMassDiff = getModifiedSequence(sequence, true);
+		console.log("Modified peptide: " + modifiedPeptideMassDiff);
+		const modifiedSequenceMassDiffSpan = document.getElementById('modifiedSequenceMassDiff');
+		modifiedSequenceMassDiffSpan.textContent = (modifiedPeptideMassDiff.length > 0)
+				? "Modified peptide: " + modifiedPeptideMassDiff // Update the span with the modified sequence
 				: '';
+
+		const modifiedPeptideUnimod = getModifiedSequence(sequence, false);
+		console.log("Modified peptide (Unimod): " + modifiedPeptideMassDiff);
+		const modifiedSequenceUnimodSpan = document.getElementById('modifiedSequenceUnimod');
+		modifiedSequenceUnimodSpan.textContent = (modifiedPeptideUnimod.length > 0)
+				? "For Koina: " + modifiedPeptideUnimod // Modified sequence that will be sent to Koina API.
+				: '';
+
 	}
 	modsPopup.classList.remove('visible');
 	$("#page-mask").hide();
@@ -719,20 +760,33 @@ function restoreValues(peptide) {
 	});
 }
 
-function getModifiedSequence(peptide)
-{
+function getModifiedSequence(peptide, massdiff = false) {
 	let modifiedPeptide = ''; // Initialize the modified peptide sequence
 
 	peptide.split('').forEach((aminoAcid, index) => {
 		const combobox = document.getElementById(`combo-${index}`); // Get the combobox for this amino acid
 		if (combobox && combobox.value) {
-			// If a modification is selected, append it in the format AminoAcid[UNIMOD:ID]
-			modifiedPeptide += `${aminoAcid}[UNIMOD:${combobox.value}]`;
+			// Get the selected option and modification details
+			const selectedOption = combobox.selectedOptions[0];
+			const modMass = parseFloat(selectedOption.dataset.mass); // Parse the mass from the data attribute
+			const unimodId = combobox.value; // Get the UNIMOD ID
+
+			if (massdiff) {
+				// Use the mass difference, rounded to no decimals
+				const roundedMass = Math.round(modMass);
+				const sign = roundedMass >= 0 ? '+' : ''; // Add '+' for positive values, no extra sign for negative values
+				modifiedPeptide += `${aminoAcid}[${sign}${roundedMass}]`;
+			} else {
+				// Use the UNIMOD ID
+				modifiedPeptide += `${aminoAcid}[UNIMOD:${unimodId}]`;
+			}
 		} else {
 			// If no modification is selected, just append the amino acid
 			modifiedPeptide += aminoAcid;
 		}
 	});
+
+	// Return the modified sequence only if there are modifications
 	return modifiedPeptide.length > peptide.length ? modifiedPeptide : '';
 }
 
