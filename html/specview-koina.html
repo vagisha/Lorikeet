@@ -89,6 +89,93 @@
 			z-index: 9998;
 			display: none;
 		}
+
+		.popup {
+			display: none;
+			position: fixed;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			width: 500px;
+			max-height: 70vh; /* Limit the height to 70% of the viewport */
+			background-color: #f9f9f9;
+			box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+			border-radius: 10px;
+			z-index: 9999; /* Set a higher z-index than the #page-mask */
+			flex-direction: column; /* Ensure header and body are stacked vertically */
+		}
+		.popup select {
+			width: 200px; /* Set a fixed width for combo boxes only inside the popup */
+		}
+		.popup.visible {
+			display: flex;
+		}
+		.popup-header {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			background-color: #f1f1f1;
+			padding: 10px 15px;
+			border-bottom: 1px solid #ddd;
+			border-top-left-radius: 10px;
+			border-top-right-radius: 10px;
+			flex-shrink: 0; /* Prevent the header from shrinking when the popup height is constrained */
+		}
+		.popup-footer {
+			display: flex;
+			justify-content: flex-end;
+			gap: 10px;
+			padding: 10px 15px;
+			border-top: 1px solid #ddd;
+			background-color: #f1f1f1;
+			flex-shrink: 0;
+			border-bottom-left-radius: 10px;
+			border-bottom-right-radius: 10px;
+		}
+		.popup-close {
+			background: none;
+			border: none;
+			font-size: 1.5em;
+			font-weight: bold;
+			cursor: pointer;
+			color: #333;
+		}
+		.popup-close:hover {
+			color: #f00;
+		}
+		.popup-body {
+			overflow-y: auto; /* Enable scrolling for the body */
+			padding: 15px;
+			flex-grow: 1; /* Allow the body to grow and occupy remaining space */
+		}
+		.popup-save {
+			border: none;
+			padding: 10px 15px;
+			border-radius: 5px;
+			cursor: pointer;
+		}
+		.popup-save:hover {
+			background-color: #45a049;
+		}
+		.popup-cancel {
+			border: none;
+			padding: 10px 15px;
+			border-radius: 5px;
+			cursor: pointer;
+		}
+		.popup-cancel:hover {
+			background-color: #d32f2f;
+		}
+
+		#modificationsTable table {
+			width: 100%;
+			border-collapse: collapse;
+		}
+		#modificationsTable td {
+			padding: 5px;
+			text-align: left;
+		}
+
 	</style>
 
 
@@ -104,7 +191,11 @@
 <table>
 <tbody>
 <tr>
-	<td colspan="1"><b>Peptide Sequence:</b> </td><td><input type="text" size="50" name="sequence"/> e.g. AAAAAKAK</td>
+	<td colspan="1"><b>Peptide Sequence:</b> </td>
+	<td>
+		<input type="text" size="50" name="sequence" id="peptideSequence"/> e.g. AAAAAKAK
+        <div style="margin-bottom:10px;"><span id="addModsButton" style="color:red; text-decoration:underline; font-size: smaller; cursor: pointer;">[Add Modifications]</span></div>
+    </td>
 </tr>
 <tr>
 	<td><b>Precursor Charge:</b> </td>
@@ -188,11 +279,26 @@
 </div>
 <hr style="margin:0px 0px 5px 0px"/>
 
+<div class="popup" id="modsPopup">
+	<div class="popup-header">
+		<div style="font-weight:bold;">Post-Translational Modifications</div>
+		<button class="popup-close" id="headerClosePopup">&times;</button>
+	</div>
+	<div class="popup-body">
+		<table id="modificationsTable"></table>
+	</div>
+	<div class="popup-footer">
+		<button id="saveModsButton" class="popup-save">Save</button>
+		<button id="cancelModsButton" class="popup-cancel">Cancel</button>
+	</div>
+</div>
 
 
 <script type="text/javascript">
 
 $(document).ready(function () {
+
+	localStorage.clear(); // Clears all stored data related to the comboboxes
 
 	$("#koina_results_table_title").hide();
 	$("#loading-indicator").hide();
@@ -262,7 +368,6 @@ function clearFields() {
 	$('input[name="sequence"]').val("");
 	$("#peaks").val("");
 }
-
 
 function createSpectrum() {
 
@@ -441,8 +546,6 @@ function parseResponse(sequence, output)
 		//ntermMod: ntermMod,
 		//ctermMod: ctermMod,
 		peaks: peaks, annotations:sortedAnnotations});
-
-
 }
 
 function roundTo(number, precision) {
@@ -450,6 +553,138 @@ function roundTo(number, precision) {
 	const factor = Math.pow(10, precision);
 	number = Math.round(number * factor) / factor;
 	return number.toFixed(precision); // Returns a string representing a number in fixed-point notation.
+}
+
+// PTMs table
+const ptmTable = {
+	acetylation: { name: 'Acetylation', unimodId: 1, mass: 42.011 },
+	phosphorylation: { name: 'Phosphorylation', unimodId: 21, mass: 79.966 },
+	methylation: { name: 'Methylation', unimodId: 34, mass: 14.016 },
+	hydroxylation: { name: 'Hydroxylation', unimodId: 35, mass: 15.995 },
+	oxidation: { name: 'Oxidation', unimodId: 36, mass: 15.995 },
+	ubiquitination: { name: 'Ubiquitination', unimodId: 37, mass: 114.043 },
+	sumoylation: { name: 'Sumoylation', unimodId: 41, mass: 213.156 }
+};
+
+// Amino acid to PTM mapping
+const ptmLookup = {
+	A: ['acetylation', 'phosphorylation'],
+	F: ['methylation', 'hydroxylation'],
+	I: ['oxidation'],
+	K: ['ubiquitination', 'acetylation', 'sumoylation']
+	// Add other amino acids and their PTMs as needed
+};
+
+const peptideInput = document.getElementById('peptideSequence');
+const addModsButton = document.getElementById('addModsButton');
+const saveModsButton = document.getElementById('saveModsButton');
+const cancelModsButton = document.getElementById('cancelModsButton');
+const headerClosePopup = document.getElementById('headerClosePopup');
+const modsPopup = document.getElementById('modsPopup');
+const modificationsTable = document.getElementById('modificationsTable');
+
+// Open the popup and generate comboboxes dynamically
+addModsButton.addEventListener('click', () => {
+	const sequence = peptideInput.value.trim().toUpperCase();
+	if (sequence) {
+		generateModificationsTable(sequence);
+		modsPopup.classList.add('visible');
+		$("#page-mask").show();
+	} else {
+		alert('Please enter a valid peptide sequence!');
+	}
+});
+
+// Close the popup. Do not save combobox values
+cancelModsButton.addEventListener('click', () => {
+	modsPopup.classList.remove('visible');
+	$("#page-mask").hide();
+});
+
+// Close the popup and save combobox values
+saveModsButton.addEventListener('click', () => {
+	const sequence = peptideInput.value.trim().toUpperCase();
+	if (sequence) {
+		saveValues(sequence);
+	}
+	modsPopup.classList.remove('visible');
+	$("#page-mask").hide();
+});
+
+// Close the popup when the header close button is clicked
+headerClosePopup.addEventListener('click', () => {
+	modsPopup.classList.remove('visible');
+	$("#page-mask").hide();
+});
+
+function generateModificationsTable(sequence) {
+	modificationsTable.innerHTML = ''; // Clear previous table
+	sequence.split('').forEach((aminoAcid, index) => {
+		const row = document.createElement('tr');
+
+		// Create a cell for the amino acid
+		const cellAminoAcid = document.createElement('td');
+		cellAminoAcid.textContent = aminoAcid;
+		row.appendChild(cellAminoAcid);
+
+		// Create a cell for the combobox
+		const cellCombobox = document.createElement('td');
+		const ptms = ptmLookup[aminoAcid]?.map(ptmKey => ptmTable[ptmKey]);
+
+		if (ptms && ptms.length > 0) {
+			const combobox = document.createElement('select');
+			combobox.id = `combo-${index}`;
+
+			// Add a blank option as the first item
+			const blankOption = document.createElement('option');
+			blankOption.value = '';
+			blankOption.textContent = '';
+			combobox.appendChild(blankOption);
+
+			// Add PTM options
+			ptms.forEach(ptm => {
+				const option = document.createElement('option');
+				option.value = ptm.unimodId;
+				option.textContent = `${ptm.name} (Mass: ${ptm.mass.toFixed(3)})`;
+				option.dataset.unimodId = ptm.unimodId; // Store UNIMOD ID as a data attribute
+				option.dataset.mass = ptm.mass; // Store mass as a data attribute
+				combobox.appendChild(option);
+			});
+
+			cellCombobox.appendChild(combobox);
+		} else {
+			// Leave the cell empty if no modifications are available
+			cellCombobox.textContent = '';
+		}
+
+		row.appendChild(cellCombobox);
+
+		// Add the row to the table
+		modificationsTable.appendChild(row);
+	});
+
+	restoreValues(sequence);
+}
+
+// Function to save combobox values
+function saveValues(peptide) {
+	peptide.split('').forEach((aminoAcid, index) => {
+		const combobox = document.getElementById(`combo-${index}`);
+		if (combobox) {
+			localStorage.setItem(`combo-${index}`, combobox.value);
+		}
+	});
+}
+
+// Function to restore combobox values
+function restoreValues(peptide) {
+	peptide.split('').forEach((aminoAcid, index) => {
+		const savedValue = localStorage.getItem(`combo-${index}`);
+		const combobox = document.getElementById(`combo-${index}`);
+		if (savedValue && combobox) {
+			combobox.value = savedValue;
+		}
+	});
 }
 
 
