@@ -97,7 +97,7 @@
 			left: 50%;
 			transform: translate(-50%, -50%);
 			width: 500px;
-			max-height: 70vh; /* Limit the height to 70% of the viewport */
+			max-height: 40vh; /* Limit the height to 40% of the viewport */
 			background-color: #f9f9f9;
 			box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 			border-radius: 10px;
@@ -193,13 +193,20 @@
 			/* transform: translateY(1px); /* Simulate press effect */
 		}
 
-		#modificationsTable table {
+		#modificationsTable {
 			width: 100%;
 			border-collapse: collapse;
 		}
 		#modificationsTable td {
-			padding: 5px;
+			padding: 6px;
+			border: 1px solid darkgray;
 			text-align: left;
+			vertical-align: middle; /* Ensures content is properly aligned */
+		}
+		#modificationsTable select {
+			width: 100%; /* Makes sure comboboxes fill the cell */
+			padding: 2px; /* Adds inner spacing to prevent cutting off */
+			box-sizing: border-box; /* Prevents unwanted width overflow */
 		}
 
 	</style>
