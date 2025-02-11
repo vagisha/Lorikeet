@@ -598,8 +598,8 @@ function createLorikeetPlot(sequence, peaks, sortedAnnotations)
 		fileName:'no-file-name',
 		//staticMods: staticMods,
 		variableMods: varMods,
-		//ntermMod: ntermMod,
-		//ctermMod: ctermMod,
+		ntermMod: getTerminalModForLorikeet('N-term'),
+		ctermMod: getTerminalModForLorikeet('C-term'),
 		peaks: peaks, annotations:sortedAnnotations});
 }
 
@@ -626,6 +626,18 @@ function generateVariableModsForLorikeet(peptide)
 	});
 
 	return variableMods;
+}
+
+function getTerminalModForLorikeet(termType)
+{
+	const combobox = document.getElementById(`combo-${termType}`);
+	if (combobox && combobox.value)
+	{
+		const selectedOption = combobox.selectedOptions[0];
+		// Parse the modification mass from the data attribute
+		return parseFloat(selectedOption.dataset.mass);
+	}
+	else return 0;
 }
 
 function roundTo(number, precision) {
@@ -699,6 +711,10 @@ headerClosePopup.addEventListener('click', () => {
 
 function generateModificationsTable(sequence) {
 	modificationsTable.innerHTML = ''; // Clear previous table
+
+	// Add N-terminal modifications row
+	addTerminalModificationRow("N-term");
+
 	sequence.split('').forEach((aminoAcid, index) => {
 		const row = document.createElement('tr');
 
@@ -712,25 +728,7 @@ function generateModificationsTable(sequence) {
 		const ptms = ptmLookup[aminoAcid]?.map(ptmKey => ptmTable[ptmKey]);
 
 		if (ptms && ptms.length > 0) {
-			const combobox = document.createElement('select');
-			combobox.id = `combo-${index}`;
-
-			// Add a blank option as the first item
-			const blankOption = document.createElement('option');
-			blankOption.value = '';
-			blankOption.textContent = '';
-			combobox.appendChild(blankOption);
-
-			// Add PTM options
-			ptms.forEach(ptm => {
-				const option = document.createElement('option');
-				option.value = ptm.unimodId;
-				option.textContent = `${ptm.name} (Mass: ${ptm.mass.toFixed(3)})`;
-				option.dataset.unimodId = ptm.unimodId; // Store UNIMOD ID as a data attribute
-				option.dataset.mass = ptm.mass; // Store mass as a data attribute
-				combobox.appendChild(option);
-			});
-
+			const combobox = createCombobox(`combo-${index}`, ptms);
 			cellCombobox.appendChild(combobox);
 		} else {
 			// Leave the cell empty if no modifications are available
@@ -743,21 +741,81 @@ function generateModificationsTable(sequence) {
 		modificationsTable.appendChild(row);
 	});
 
+	// Add C-terminal modifications row
+	addTerminalModificationRow("C-term");
+
 	restoreValues(sequence);
 }
 
-// Function to save combobox values
+// Function to add N-term or C-term modification rows
+function addTerminalModificationRow(termType) {
+	const row = document.createElement('tr');
+
+	const labelCell = document.createElement('td');
+	labelCell.textContent = termType; // "N-term" or "C-term"
+	row.appendChild(labelCell);
+
+	const comboboxCell = document.createElement('td');
+	const ptms = ptmLookup[termType]?.map(ptmKey => ptmTable[ptmKey]);
+
+	if (ptms && ptms.length > 0) {
+		const combobox = createCombobox(`combo-${termType}`, ptms);
+		comboboxCell.appendChild(combobox);
+	} else {
+		comboboxCell.textContent = '';
+	}
+
+	row.appendChild(comboboxCell);
+	modificationsTable.appendChild(row);
+}
+
+// Function to create a combobox with PTM options
+function createCombobox(id, ptms) {
+	const combobox = document.createElement('select');
+	combobox.id = id;
+
+	// Add a blank option as the first item
+	const blankOption = document.createElement('option');
+	blankOption.value = '';
+	blankOption.textContent = '';
+	combobox.appendChild(blankOption);
+
+	// Add PTM options
+	ptms.forEach(ptm => {
+		const option = document.createElement('option');
+		option.value = ptm.unimodId;
+		option.textContent = `${ptm.name} (Mass: ${ptm.mass.toFixed(3)})`;
+		option.dataset.unimodId = ptm.unimodId; // Store UNIMOD ID as a data attribute
+		option.dataset.mass = ptm.mass; // Store mass as a data attribute
+		combobox.appendChild(option);
+	});
+
+	return combobox;
+}
+
+// Function to save combobox values (including terminal modifications)
 function saveValues(peptide) {
+	// Save N-terminal modification
+	saveTerminalModification("N-term");
+
+	// Save modifications for each amino acid in the sequence
 	peptide.split('').forEach((aminoAcid, index) => {
 		const combobox = document.getElementById(`combo-${index}`);
 		if (combobox) {
 			localStorage.setItem(`combo-${index}`, combobox.value);
 		}
 	});
+
+	// Save C-terminal modification
+	saveTerminalModification("C-term");
 }
 
-// Function to restore combobox values
+// Function to restore combobox values (including terminal modifications)
 function restoreValues(peptide) {
+	// Restore N-terminal modification
+	restoreTerminalModification("N-term");
+
+	// Restore modifications for each amino acid in the sequence
 	peptide.split('').forEach((aminoAcid, index) => {
 		const savedValue = localStorage.getItem(`combo-${index}`);
 		const combobox = document.getElementById(`combo-${index}`);
@@ -765,36 +823,82 @@ function restoreValues(peptide) {
 			combobox.value = savedValue;
 		}
 	});
+
+	// Restore C-terminal modification
+	restoreTerminalModification("C-term");
 }
 
+// Function to save terminal modifications
+function saveTerminalModification(termType) {
+	const combobox = document.getElementById(`combo-${termType}`);
+	if (combobox) {
+		localStorage.setItem(`combo-${termType}`, combobox.value);
+	}
+}
+
+// Function to restore terminal modifications
+function restoreTerminalModification(termType) {
+	const savedValue = localStorage.getItem(`combo-${termType}`);
+	const combobox = document.getElementById(`combo-${termType}`);
+	if (savedValue && combobox) {
+		combobox.value = savedValue;
+	}
+}
+
+
 function getModifiedSequence(peptide, massdiff = false) {
-	let modifiedPeptide = ''; // Initialize the modified peptide sequence
+	let modifiedPeptide = ''; // Initialize modified peptide sequence
 
+	// Get N-terminal modification
+	let nTermMod = getTerminalModification("N-term", massdiff);
+
+	// Get amino acid modifications
 	peptide.split('').forEach((aminoAcid, index) => {
-		const combobox = document.getElementById(`combo-${index}`); // Get the combobox for this amino acid
-		if (combobox && combobox.value) {
-			// Get the selected option and modification details
-			const selectedOption = combobox.selectedOptions[0];
-			const modMass = parseFloat(selectedOption.dataset.mass); // Parse the mass from the data attribute
-			const unimodId = combobox.value; // Get the UNIMOD ID
-
-			if (massdiff) {
-				// Use the mass difference, rounded to no decimals
-				const roundedMass = Math.round(modMass);
-				const sign = roundedMass >= 0 ? '+' : ''; // Add '+' for positive values, no extra sign for negative values
-				modifiedPeptide += `${aminoAcid}[${sign}${roundedMass}]`;
-			} else {
-				// Use the UNIMOD ID
-				modifiedPeptide += `${aminoAcid}[UNIMOD:${unimodId}]`;
-			}
-		} else {
-			// If no modification is selected, just append the amino acid
-			modifiedPeptide += aminoAcid;
-		}
+		modifiedPeptide += getAminoAcidModification(aminoAcid, index, massdiff);
 	});
 
-	// Return the modified sequence only if there are modifications
-	return modifiedPeptide.length > peptide.length ? modifiedPeptide : '';
+	// Get C-terminal modification
+	let cTermMod = getTerminalModification("C-term", massdiff);
+
+	// Construct modified sequence
+	let finalModifiedSequence = `${nTermMod}${modifiedPeptide}${cTermMod}`;
+
+	return finalModifiedSequence.length > peptide.length ? finalModifiedSequence : '';
+}
+
+// Function to get terminal modifications (N-term / C-term)
+function getTerminalModification(termType, massdiff) {
+	const combobox = document.getElementById(`combo-${termType}`);
+	let mod = combobox && combobox.value ? formatModification(combobox, massdiff) : '';
+	if (mod.length > 0)
+	{
+		termType === 'N-term' ? mod = mod + '-' : mod = '-' +  mod;
+	}
+	return mod;
+}
+
+// Function to get modifications for individual amino acids
+function getAminoAcidModification(aminoAcid, index, massdiff) {
+	const combobox = document.getElementById(`combo-${index}`);
+	if (combobox && combobox.value) {
+		return `${aminoAcid}${formatModification(combobox, massdiff)}`;
+	}
+	return aminoAcid; // Return unmodified amino acid if no modification is selected
+}
+
+// Function to format modifications (UNIMOD ID or Mass Difference)
+function formatModification(combobox, massdiff) {
+	const selectedOption = combobox.selectedOptions[0];
+	const modMass = parseFloat(selectedOption.dataset.mass);
+	const unimodId = combobox.value;
+
+	if (massdiff) {
+		const roundedMass = Math.round(modMass);
+		const sign = roundedMass >= 0 ? '+' : ''; // Add '+' for positive values
+		return `[${sign}${roundedMass}]`;
+	} else {
+		return `[UNIMOD:${unimodId}]`;
+	}
 }
 
 async function loadUnimodModifications(xmlFilePath) {
@@ -834,10 +938,15 @@ async function loadUnimodModifications(xmlFilePath) {
 
 				// Add to the ptmLookup
 				if (!ptmLookup[site]) {
-					ptmLookup[site] = [];
+					ptmLookup[site] = new Set();
 				}
-				ptmLookup[site].push(title.toLowerCase());
+				ptmLookup[site].add(title.toLowerCase()); // Using a Set prevents duplicate entries
 			}
+		}
+
+		// Convert Sets back to Arrays for compatibility
+		for (let site in ptmLookup) {
+			ptmLookup[site] = Array.from(ptmLookup[site]);
 		}
 
 		console.log("PTM Table:", ptmTable);

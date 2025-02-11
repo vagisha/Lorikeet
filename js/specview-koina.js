@@ -19,6 +19,8 @@
                 width: 800, 	// width of the ms/ms plot
                 height: 600, 	// height of the ms/ms plot
                 variableMods: [],
+                ntermMod: 0, // additional mass to be added to the n-term
+                ctermMod: 0, // additional mass to be added to the c-term
                 showIonTable: true,
                 showViewingOptions: true,
                 showOptionsTable: true,
@@ -97,7 +99,7 @@
         }
         options.variableMods = parsedVarMods;
 
-        var peptide = new Peptide(options.sequence, [], options.variableMods, 0, 0, 0);
+        var peptide = new Peptide(options.sequence, [], options.variableMods, options.ntermMod, options.ctermMod, 0);
         options.peptide = peptide;
 
         if(!options.minDisplayMz)
