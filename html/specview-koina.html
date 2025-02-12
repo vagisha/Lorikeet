@@ -498,11 +498,27 @@ function createSpectrum() {
 				}
 			} else {
 				console.warn("No responseText available. It might be a network error or server issue.");
+				let errMsg = "There was an error getting a response from the Koina server.";
+				if (hasSavedModifications())
+				{
+					errMsg += " It is likely that the modifications applied to the peptide are not supported by the selected Koina prediction model.";
+				}
+				alert(errMsg);
 			}
 		}
 	});
 	
 	return true;
+}
+
+function hasSavedModifications()
+{
+	for (let key in localStorage) {
+		if (key.startsWith("combo-") && localStorage.getItem(key)) {
+			return true; // Found at least one modification
+		}
+	}
+	return false; // No modifications found
 }
 
 function removeModifications(sequence)
