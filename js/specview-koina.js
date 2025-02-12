@@ -379,7 +379,7 @@
             plotAccordingToChoices(container);
         });
 
-        container.find("input[name='"+getRadioName(container, "peakLabelOpt")+"']").click(function() {
+        container.find(getElementSelector(container, "peakLabelOpt")).change(function() {
             container.data("peakLabelTypeChanged", true);
             plotAccordingToChoices(container);
         });
@@ -612,7 +612,7 @@
         const ionSeriesLabels = container.data("ionSeriesLabels");
         const peaks = container.data("options").peaks;
         const annotations = container.data("options").annotations;
-        const peakLabelType = container.find("input[name='"+getRadioName(container, "peakLabelOpt")+"']:checked").val();
+        const peakLabelType = container.find(getElementSelector(container, "peakLabelOpt")).val();
 
         const koinaIonTypes = new Set();
 
@@ -1004,20 +1004,26 @@
         // myContent += '&nbsp;<input id="'+getElementId(container, elementIds.printLink)+'" type="button" value="Print" /> ';
         myContent += '</nobr> ';
 
-        myContent += '&nbsp;&nbsp;';
+        // seprarator
+        myContent += '<span style="margin: 0px 10px;">|</span>'
 
         // tooltip option
         myContent += '<nobr> ';
         myContent += '<label><input id="'+getElementId(container, elementIds.enableTooltip)+'" type="checkbox">Enable tooltip </label>';
         myContent += '</nobr> ';
 
+        // seprarator
+        myContent += '<span style="margin: 0px 10px;">|</span>'
+
         // peak labels
         myContent += '<nobr> ';
-        myContent+= '<span> Peak Labels:</span>';
-        myContent+= '<label><input type="radio" name="'+getRadioName(container, "peakLabelOpt")+'" value="ion" checked="checked"/><span style="font-weight: bold;">Ion</span></label>';
-        myContent+= '<label><input type="radio" name="'+getRadioName(container, "peakLabelOpt")+'" value="mz"/><span style="font-weight: bold;">m/z</span></label><br/>';
-        myContent+= '<label><input type="radio" name="'+getRadioName(container, "peakLabelOpt")+'" value="none"/><span style="font-weight: bold;">None</span></label> ';
-        myContent += '</nobr> ';
+        myContent += '<span> Peak Labels: </span>';
+        myContent += '<select id="' + getElementId(container, "peakLabelOpt") + '">';
+        myContent += '  <option value="ion" selected>Ion</option>';
+        myContent += '  <option value="mz">m/z</option>';
+        myContent += '  <option value="none">None</option>';
+        myContent += '</select>';
+        myContent += '</nobr>';
 
         myContent += '<br>';
 
