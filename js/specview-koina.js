@@ -558,16 +558,25 @@
         data.push(peaks1);
         //data.push(peaks2);
 
-        // add the annotated peaks
-        var seriesMatches = getSeriesMatches(container);
-        for(var i = 0; i < seriesMatches.length; i += 1) {
-            data.push(seriesMatches[i]);
+        const peakLabelType = getPeakLabekType(container);
+        if (peakLabelType !== 'none')
+        {
+            // add the annotated peaks
+            var seriesMatches = getSeriesMatches(container);
+            for (var i = 0; i < seriesMatches.length; i += 1) {
+                data.push(seriesMatches[i]);
+            }
         }
 
         return data;
     }
 
-
+    function getPeakLabekType(container)
+    {
+        var element = container.find(getElementSelector(container, "peakLabelOpt"));
+        if (element) return element.val();
+        return "ion";
+    }
     //-----------------------------------------------
     // SELECTED ION TYPES
     // -----------------------------------------------
@@ -576,6 +585,7 @@
         const annotations = container.data("options").annotations;
 
         const selectedIonTypes = [];
+
         const koinaIonTypes = new Set();
         for (let i = 0; i <  annotations.length; i += 1)
         {
@@ -612,7 +622,7 @@
         const ionSeriesLabels = container.data("ionSeriesLabels");
         const peaks = container.data("options").peaks;
         const annotations = container.data("options").annotations;
-        const peakLabelType = container.find(getElementSelector(container, "peakLabelOpt")).val();
+        const peakLabelType =getPeakLabekType(container);
 
         const koinaIonTypes = new Set();
 
