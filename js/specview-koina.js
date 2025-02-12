@@ -24,7 +24,7 @@
                 showIonTable: true,
                 showViewingOptions: true,
                 showOptionsTable: true,
-                peakLabelOpt: 'mz',
+                peakLabelOpt: 'ion',
                 showSequenceInfo: true,
                 enableTooltip: true,
 	            tooltipZIndex: null,
@@ -612,6 +612,7 @@
         const ionSeriesLabels = container.data("ionSeriesLabels");
         const peaks = container.data("options").peaks;
         const annotations = container.data("options").annotations;
+        const peakLabelType = container.find("input[name='"+getRadioName(container, "peakLabelOpt")+"']:checked").val();
 
         const koinaIonTypes = new Set();
 
@@ -660,7 +661,7 @@
             const ionSeriesPeaks = ionSeriesMatch[ion.type][ion.charge];
             if (ionSeriesPeaks)
             {
-                dataSeries.push({data: ionSeriesPeaks, color: ion.color, labelType: "ion", labels: ionSeriesLabels[ion.type][ion.charge]});
+                dataSeries.push({data: ionSeriesPeaks, color: ion.color, labelType: peakLabelType, labels: ionSeriesLabels[ion.type][ion.charge]});
             }
         }
         return dataSeries;
@@ -1008,6 +1009,14 @@
         // tooltip option
         myContent += '<nobr> ';
         myContent += '<label><input id="'+getElementId(container, elementIds.enableTooltip)+'" type="checkbox">Enable tooltip </label>';
+        myContent += '</nobr> ';
+
+        // peak labels
+        myContent += '<nobr> ';
+        myContent+= '<span> Peak Labels:</span>';
+        myContent+= '<label><input type="radio" name="'+getRadioName(container, "peakLabelOpt")+'" value="ion" checked="checked"/><span style="font-weight: bold;">Ion</span></label>';
+        myContent+= '<label><input type="radio" name="'+getRadioName(container, "peakLabelOpt")+'" value="mz"/><span style="font-weight: bold;">m/z</span></label><br/>';
+        myContent+= '<label><input type="radio" name="'+getRadioName(container, "peakLabelOpt")+'" value="none"/><span style="font-weight: bold;">None</span></label> ';
         myContent += '</nobr> ';
 
         myContent += '<br>';
