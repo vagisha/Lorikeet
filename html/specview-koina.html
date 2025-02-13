@@ -339,6 +339,9 @@
 
 <script type="text/javascript">
 
+	let CURRENT_SEQUENCE = "";
+	let CURRENT_MODEL = "";
+
 $(document).ready(function () {
 
 	localStorage.clear(); // Clears all stored data related to the comboboxes
@@ -348,6 +351,16 @@ $(document).ready(function () {
 	$("#page-mask").hide();
 
 	loadUnimodModifications("../resources/unimod-small.xml");
+
+	$("#peptideSequence").on("blur", function ()
+	{
+		var inputSequence = $('input[name="sequence"]').val();
+		if (CURRENT_SEQUENCE !== inputSequence) {
+			// Clear the displayed spectrum when the peptide sequence is changed and the input field loses focus.
+			CURRENT_SEQUENCE = inputSequence;
+			clear(true);
+		}
+	});
 
 	$("input[name='create']").click(function() {
 
@@ -366,12 +379,16 @@ $(document).ready(function () {
 
 	$("#prediction_model").change(function()
 	{
+		const val = $(this).val();
+		if (CURRENT_MODEL === val) return;
+
+		console.log("Selection changed " + val);
+		clear(false); // Clear the displayed spectrum if the prediction model has changed.
+
 		$("#ce_field").hide();
 		$("#instrumentType_field").hide();
 		$("#fragmentationType_field").hide();
 
-		const val = $(this).val();
-		console.log("Selection changed " + val);
 		/*
 		    These are the accepted options for the following prediction models
 			"ms2pip_HCD2021" - precursor charge
@@ -403,16 +420,12 @@ $(document).ready(function () {
 		// Example: https://koina.wilhelmlab.org/docs#post-/Prosit_2019_intensity/infer
 		let href = "https://koina.wilhelmlab.org/docs#post-/" + val + "/infer";
 		$("#documentation_link").attr("href", href);
+
+		CURRENT_MODEL = val;
 	});
 
 	$("#prediction_model").val("ms2pip_timsTOF2024").change(); // Default selected prediction model
 });
-
-function clearFields() {
-
-	$('input[name="sequence"]').val("");
-	$("#peaks").val("");
-}
 
 function createSpectrum() {
 
@@ -429,6 +442,8 @@ function createSpectrum() {
 		alert("Please enter a sequence");
 		return false;
 	}
+
+	CURRENT_SEQUENCE = sequence;
 
 	let precursorCharge = parseInt($('input[name="charge"]').val());
 	let collisionEnergy = $("#ce_field").is(":visible") ? parseInt($('input[name="ce"]').val()) : null;
@@ -714,6 +729,7 @@ saveModsButton.addEventListener('click', () => {
 				? "For Koina: " + modifiedPeptideUnimod // Modified sequence that will be sent to Koina API.
 				: '';
 
+		clear(false); // Clear the plot and the modifications table
 	}
 	modsPopup.classList.remove('visible');
 	$("#page-mask").hide();
@@ -972,6 +988,21 @@ async function loadUnimodModifications(xmlFilePath) {
 	}
 }
 
+function clear(clearMods) {
+
+	console.log("Clearing annotated spectrum");
+	$("#peaks").val("");
+	$("#specview_plot_div").html("");
+	$("#koina_results_table").html("");
+	$("#koina_results_table_title").hide();
+
+	if (clearMods)
+	{
+		console.log("Clearing modifications");
+		localStorage.clear();
+		if (modificationsTable) modificationsTable.innerHTML = ''; // Clear previous table
+	}
+}
 
 </script>
 </body>
