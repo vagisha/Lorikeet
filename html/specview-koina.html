@@ -208,6 +208,9 @@
 			padding: 2px; /* Adds inner spacing to prevent cutting off */
 			box-sizing: border-box; /* Prevents unwanted width overflow */
 		}
+		select {
+			padding: 3px;
+		}
 
 	</style>
 
@@ -228,7 +231,9 @@
 	<td>
 		<input type="text" size="50" name="sequence" id="peptideSequence"/> <span style="font-size:0.7em">e.g. AAAAAKAK</span>
         <div style="margin-bottom:10px;">
-			<span id="addModsButton" style="color:red; text-decoration:underline; font-size: smaller; cursor: pointer;">[Modifications]</span>
+			<span id="addModsButton" style="color:red; text-decoration:underline; font-weight:bold; cursor: pointer;">[Modifications]</span>
+			<span id="pasteExampleButton" style="color:#6f6f6f; font-size: smaller; cursor: pointer; margin-left:90px;">[Paste Example]</span>
+			<span id="clearSequenceButton" style="color:#6f6f6f; font-size: smaller; cursor: pointer; margin-left:15px;">[Clear]</span>
 			<div id="modifiedSequenceMassDiff" style="font-size: small;"></div>
 			<div id="modifiedSequenceUnimod" style="font-size: small;"></div>
 		</div>
@@ -354,12 +359,24 @@ $(document).ready(function () {
 
 	$("#peptideSequence").on("blur", function ()
 	{
-		var inputSequence = $('input[name="sequence"]').val();
+		const inputSequence = getInputSequence();
 		if (CURRENT_SEQUENCE !== inputSequence) {
 			// Clear the displayed spectrum when the peptide sequence is changed and the input field loses focus.
 			CURRENT_SEQUENCE = inputSequence;
 			clear(true);
 		}
+	});
+
+	$("#pasteExampleButton").on('click',  function()
+	{
+		setInputSequence("AAAAAKAK");
+		clear(true);
+	});
+
+	$("#clearSequenceButton").on('click', function()
+	{
+		setInputSequence("");
+		clear(true);
 	});
 
 	$("input[name='create']").click(function() {
@@ -427,6 +444,16 @@ $(document).ready(function () {
 	$("#prediction_model").val("ms2pip_timsTOF2024").change(); // Default selected prediction model
 });
 
+function getInputSequence()
+{
+	return $('input[name="sequence"]').val();
+}
+
+function setInputSequence(sequence)
+{
+	$('input[name="sequence"]').val(sequence);
+}
+
 function createSpectrum() {
 
 	// first remove the existing spectrum
@@ -437,7 +464,7 @@ function createSpectrum() {
 	// -----------------------------------------------------------
 	// get the sequence
 	// -----------------------------------------------------------
-	let sequence = $('input[name="sequence"]').val();
+	let sequence = getInputSequence();
 	if(!sequence) {
 		alert("Please enter a sequence");
 		return false;
@@ -1001,6 +1028,8 @@ function clear(clearMods) {
 		console.log("Clearing modifications");
 		localStorage.clear();
 		if (modificationsTable) modificationsTable.innerHTML = ''; // Clear previous table
+		$("#modifiedSequenceMassDiff").html("");
+		$("#modifiedSequenceUnimod").html("");
 	}
 }
 
