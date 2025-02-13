@@ -71,6 +71,11 @@
             peakDetect: "peakDetect"
     };
 
+    const ION_OPT = "ion";
+    const MZ_OPT = "mz";
+    const MZ_GREY_OPT = "mz-grey";
+    const NONE_OPT = "none";
+
     function getElementId(container, elementId){
         return elementId+"_"+container.data("index");
     }
@@ -574,8 +579,11 @@
     function getPeakLabekType(container)
     {
         var element = container.find(getElementSelector(container, "peakLabelOpt"));
-        if (element) return element.val();
-        return "ion";
+        if (element)
+        {
+            return element.val();
+        }
+        return ION_OPT;
     }
     //-----------------------------------------------
     // SELECTED ION TYPES
@@ -611,6 +619,11 @@
         container.data("ionSeriesLabels", {a: [], b: [], c: [], x: [], y: [], z: []});
     }
 
+    function showGreyPeaks(container)
+    {
+        return MZ_GREY_OPT === getPeakLabekType(container);
+    }
+
     function getSeriesMatches(container)
     {
         const dataSeries = [];
@@ -622,7 +635,7 @@
         const ionSeriesLabels = container.data("ionSeriesLabels");
         const peaks = container.data("options").peaks;
         const annotations = container.data("options").annotations;
-        const peakLabelType =getPeakLabekType(container);
+        const peakLabelType = getPeakLabekType(container);
 
         const koinaIonTypes = new Set();
 
@@ -654,7 +667,7 @@
 
                     if (ionSeries[ionType] && ionSeries[ionType][charge] && ionSeries[ionType][charge][ionIdx])
                     {
-                        console.log("Its a match!!!");
+                        // console.log("Its a match!!!");
                         // ionSeries[ionType][charge][ionIdx] = Ion; e.g. b5+2; iontype = 'b', charge = 2, ionIdx = 5
                         ionSeries[ionType][charge][ionIdx].match = true;
                     }
@@ -662,6 +675,7 @@
             }
         }
 
+        const greyPeaks = showGreyPeaks(container);
         for(const ionStr of koinaIonTypes)
         {
             // selectedIonTypes.push(ion = Ion.get(ionType, charge));
@@ -671,7 +685,7 @@
             const ionSeriesPeaks = ionSeriesMatch[ion.type][ion.charge];
             if (ionSeriesPeaks)
             {
-                dataSeries.push({data: ionSeriesPeaks, color: ion.color, labelType: peakLabelType, labels: ionSeriesLabels[ion.type][ion.charge]});
+                dataSeries.push({data: ionSeriesPeaks, color: greyPeaks ? "#666666" : ion.color, labelType: greyPeaks ? MZ_OPT : peakLabelType, labels: ionSeriesLabels[ion.type][ion.charge]});
             }
         }
         return dataSeries;
@@ -1029,9 +1043,10 @@
         myContent += '<nobr> ';
         myContent += '<span> Peak Labels: </span>';
         myContent += '<select id="' + getElementId(container, "peakLabelOpt") + '">';
-        myContent += '  <option value="ion" selected>Ion</option>';
-        myContent += '  <option value="mz">m/z</option>';
-        myContent += '  <option value="none">None</option>';
+        myContent += '  <option value="' + ION_OPT + '" selected>Ion</option>';
+        myContent += '  <option value="' + MZ_OPT + '">m/z</option>';
+        myContent += '  <option value="' + MZ_GREY_OPT + '">m/z (Grey)</option>';
+        myContent += '  <option value="' + NONE_OPT + '">None</option>';
         myContent += '</select>';
         myContent += '</nobr>';
 
