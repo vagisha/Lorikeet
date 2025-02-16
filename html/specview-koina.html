@@ -229,7 +229,7 @@
 <tr>
 	<td colspan="1" valign="top"><b>Peptide Sequence:</b> </td>
 	<td>
-		<input type="text" size="50" name="sequence" id="peptideSequence"/> <span style="font-size:0.7em">e.g. AAAAAKAK</span>
+		<input type="text" size="50" name="sequence" id="peptideSequence"/> <span style="font-size:0.7em">e.g. DIGSESTEDQAMEDIK</span>
         <div style="margin-bottom:10px;">
 			<span id="addModsButton" style="color:red; text-decoration:underline; font-weight:bold; cursor: pointer;">[Modifications]</span>
 			<span id="pasteExampleButton" style="color:#6f6f6f; font-size: smaller; cursor: pointer; margin-left:90px;">[Paste Example]</span>
@@ -369,7 +369,7 @@ $(document).ready(function () {
 
 	$("#pasteExampleButton").on('click',  function()
 	{
-		setInputSequence("AAAAAKAK");
+		setInputSequence("DIGSESTEDQAMEDIK");
 		clear(true);
 	});
 
@@ -784,7 +784,8 @@ function generateModificationsTable(sequence) {
 
 		// Create a cell for the combobox
 		const cellCombobox = document.createElement('td');
-		const ptms = ptmLookup[aminoAcid]?.map(ptmKey => ptmTable[ptmKey]);
+		const position = (index === 0) ? 'Any N-term' : (index === sequence.length - 1 ? 'Any C-term' : 'Anywhere');
+		const ptms = ptmLookup[aminoAcid]?.filter(entry => entry.location === 'Anywhere' || entry.location === position).map(entry => ptmTable[entry.modTitle]);
 
 		if (ptms && ptms.length > 0) {
 			const combobox = createCombobox(`combo-${index}`, ptms);
@@ -815,7 +816,7 @@ function addTerminalModificationRow(termType) {
 	row.appendChild(labelCell);
 
 	const comboboxCell = document.createElement('td');
-	const ptms = ptmLookup[termType]?.map(ptmKey => ptmTable[ptmKey]);
+	const ptms = ptmLookup[termType]?.map(entry => ptmTable[entry.modTitle]);
 
 	if (ptms && ptms.length > 0) {
 		const combobox = createCombobox(`combo-${termType}`, ptms);
@@ -980,10 +981,10 @@ async function loadUnimodModifications(xmlFilePath) {
 			const monoMass = parseFloat(delta.getAttribute("mono_mass"));
 
 			// Add to the ptmTable
-			ptmTable[title.toLowerCase()] = {
+			ptmTable[title] = {
 				name: fullName,
 				unimodId: recordId,
-				mass: monoMass,
+				mass: monoMass
 			};
 
 			// Process each <umod:specificity> element
@@ -995,17 +996,30 @@ async function loadUnimodModifications(xmlFilePath) {
 				// Skip hidden modifications
 				if (hidden === "1") continue;
 
+				let position = spec.getAttribute("position") || 'Anywhere';
+				if (position === 'Protein N-term') position = 'Any N-term';
+				if (position === 'Protein C-term') position = 'Any C-term';
+
 				// Add to the ptmLookup
 				if (!ptmLookup[site]) {
-					ptmLookup[site] = new Set();
+					ptmLookup[site] = [];
 				}
-				ptmLookup[site].add(title.toLowerCase()); // Using a Set prevents duplicate entries
-			}
-		}
 
-		// Convert Sets back to Arrays for compatibility
-		for (let site in ptmLookup) {
-			ptmLookup[site] = Array.from(ptmLookup[site]);
+				let existingEntry = ptmLookup[site].find(entry => entry.modTitle === title);
+				if (existingEntry)
+				{
+					if (existingEntry.location !== 'Anywhere')
+					{
+						existingEntry.location = position;
+					}
+				}
+				else {
+					ptmLookup[site].push({
+						modTitle: title,
+						location: position
+					});
+				}
+			}
 		}
 
 		console.log("PTM Table:", ptmTable);
