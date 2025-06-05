@@ -695,17 +695,38 @@
             xaxis: {
                 title: 'm/z',
                 range: zoomRange && zoomRange.xaxis ? [zoomRange.xaxis.from, zoomRange.xaxis.to] : [xrange.xmin, xrange.xmax],
-                zeroline: false
+                zeroline: false,
+                tickfont: {
+                    size: 10
+                },
             },
             yaxis: {
                 title: 'Intensity',
                 zeroline: false,
                 rangemode: 'tozero',
-                fixedrange: false
+                fixedrange: false,
+                tickfont: {
+                    size: 10
+                }
             },
             bargap: 0.1,
             hovermode: 'closest',
-            showlegend: true
+            showlegend: true,
+            // Add plot border
+            shapes: [{
+                type: 'rect',
+                xref: 'paper',
+                yref: 'paper',
+                x0: 0,
+                y0: 0,
+                x1: 1,
+                y1: 1,
+                line: {
+                    color: '#000000',
+                    width: 0.5
+                },
+                fillcolor: 'rgba(0,0,0,0)'
+            }]
         };
         // Support butterfly (double y-axis) plot
         if (datasets.some(s => s.yaxis === 2)) {
@@ -767,20 +788,27 @@
         return {xmin:xmin - xpadding, xmax:xmax + xpadding};
     }
 
-    function plotPeakMassErrorPlot(container, datasets) {
+    function plotPeakMassErrorPlot(container, datasets) 
+    {
         var data = [];
         var options = container.data("options");
+        var plotDiv = $(getElementSelector(container, elementIds.massErrorPlot));
 
         var ppmError = options.massErrorPlotDefaultUnit === massErrorTypePpm;
 
         var minMassError = 0;
         var maxMassError = 0;
+        var allMzValues = [];
+        var allMassErrors = [];
+        var seriesColors = [];
+
+        // Process datasets to extract mass error data
         for (var i = 0; i < datasets.length; i += 1) {
             var series = datasets[i];
             var seriesType = series.labelType;
             if (seriesType && seriesType === 'ion') {
                 var seriesData = series.data;
-                var s_data = [];
+                var seriesColor = series.color || '#000000';
                 for (var j = 0; j < seriesData.length; j += 1) {
                     var observedMz = seriesData[j][0];
                     var theoreticalMz = seriesData[j][2];
@@ -790,87 +818,178 @@
                     }
                     minMassError = Math.min(minMassError, massError);
                     maxMassError = Math.max(maxMassError, massError);
-                    s_data.push([seriesData[j][0], massError]);
+                    allMzValues.push(observedMz);
+                    allMassErrors.push(massError);
+                    seriesColors.push(seriesColor);
                 }
-                data.push({data:s_data, color:series.color, labelType:'none'});
             }
         }
 
-        var placeholder = $(getElementSelector(container, elementIds.massErrorPlot));
+        // Clear any existing plot
+        plotDiv.empty();
 
-        var __xrange = getPlotXRange(options);
-        var zoomRange = container.data("zoomRange");
-        if(zoomRange)
-        {
-            // Sync zooming with the MS/MS plot.
-            __xrange.xmin = zoomRange.xaxis.from;
-            __xrange.xmax = zoomRange.xaxis.to;
+        // If no data, create empty plot
+        if (allMzValues.length === 0) {
+            var __xrange = getPlotXRange(options);
+            allMzValues = [__xrange.xmin];
+            allMassErrors = [0];
+            minMassError = maxMassError = 0;
         }
 
-        var ypadding = Math.abs(maxMassError - minMassError) * 0.025;
-
-        // the MS/MS plot should have been created by now.  This is a hack to get the plots aligned.
-        // We will set the y-axis labelWidth to this value.
-        var labelWidth = container.data("plot").getAxes().yaxis.labelWidth;
-
-        if(data.length === 0)
-        {
-            // Add dummy data to show an empty plot.
-            data.push({data:[__xrange.xmin, 0], color:'#000000', labelType:'none'});
-        }
-
-        var massErrorPlotOptions = {
-            series:{data:data, points:{show:true, fill:true, radius:1}, shadowSize:0},
-            grid:{ show:true,
-                   hoverable:true,
-                   autoHighlight:false,
-                   clickable:false,
-                   borderWidth:1,
-                   labelMargin:1,
-                   markings:[
-                       {yaxis:{from:0, to:0}, color:"#555555", lineWidth:0.5}
-                   ]  // draw a horizontal line at y=0
-		 },
-            selection:{ mode:"xy", color:"#F0E68C" },
-            xaxis:{ tickLength:3, tickColor:"#000",
-                    min:__xrange.xmin,
-                    max:__xrange.xmax},
-            yaxis:{ tickLength:0, tickColor:"#fff",
-                    min:minMassError - ypadding,
-                    max:maxMassError + ypadding,
-                    labelWidth:labelWidth }
+        // Create Plotly trace with colored points from series colors
+        var trace = {
+            x: allMzValues,
+            y: allMassErrors,
+            mode: 'markers',
+            type: 'scatter',
+            marker: {
+                size: 4,
+                color: seriesColors.length > 0 ? seriesColors : '#000000'
+            },
+            hovertemplate: 'm/z: %{x:.2f}<br>error: %{y:.4f}<extra></extra>',
+            showlegend: false
         };
 
+        var traces = [trace];
 
-        // TOOLTIPS
-        $(getElementSelector(container, elementIds.massErrorPlot)).bind("plothover", function (event, pos, item) {
-            displayTooltip(item, container, options, "m/z", "error");
+        // Get x-axis range
+        var __xrange = getPlotXRange(options);
+        var zoomRange = container.data("zoomRange");
+        var xAxisRange = [__xrange.xmin, __xrange.xmax];
+        
+        if (zoomRange) {
+            // Sync zooming with the MS/MS plot
+            xAxisRange = [zoomRange.xaxis.from, zoomRange.xaxis.to];
+        }
+
+        // Calculate y-axis range with padding
+        var ypadding = Math.abs(maxMassError - minMassError) * 0.025;
+        var yAxisRange = [minMassError - ypadding, maxMassError + ypadding];
+
+        // Layout configuration
+        var layout = {
+            width: options.width || 700,
+            height: 150,
+            margin: {l: 60, r: 20, t: 20, b: 40},
+            xaxis: {
+                title: 'm/z',
+                range: xAxisRange,
+                zeroline: false,
+                showgrid: true,
+                gridcolor: '#f0f0f0',
+                linecolor: '#000000',
+                linewidth: 1,
+                mirror: true,
+                fixedrange: false,
+                tickfont: {
+                    size: 10
+                }
+            },
+            yaxis: {
+                title: 'Mass Error',
+                range: yAxisRange,
+                zeroline: true,
+                zerolinecolor: '#555555',
+                zerolinewidth: 1,
+                showgrid: true,
+                gridcolor: '#f0f0f0',
+                linecolor: '#000000',
+                linewidth: 1,
+                mirror: true,
+                fixedrange: false,
+                tickfont: {
+                    size: 10
+                },
+                tickformat: '.2f'
+            },
+            plot_bgcolor: 'white',
+            paper_bgcolor: 'white',
+            hovermode: 'closest',
+            showlegend: false,
+            autosize: false,
+            // Add plot border
+            shapes: [{
+                type: 'rect',
+                xref: 'paper',
+                yref: 'paper',
+                x0: 0,
+                y0: 0,
+                x1: 1,
+                y1: 1,
+                line: {
+                    color: '#000000',
+                    width: 0.05
+                },
+                fillcolor: 'rgba(0,0,0,0)'
+            }]
+        };
+
+        // Create the plot
+        Plotly.newPlot(plotDiv[0], traces, layout, {displayModeBar: false, responsive: false});
+
+        // Add mass error unit toggle button
+        var unitButtonId = getElementId(container, elementIds.massErrorPlot_unit);
+        if ($('#' + unitButtonId).length === 0) {
+            plotDiv.append('<div id="' + unitButtonId + '" class="link" ' +
+                'style="position:absolute; left:5px; top:4px; ' +
+                'background-color:yellow; font-style:italic; padding:2px 4px; cursor:pointer; z-index:10;">' +
+                options.massErrorPlotDefaultUnit + '</div>');
+
+            // Toggle mass error unit on click
+            $('#' + unitButtonId).click(function () {
+                var unit = $(this).text();
+                
+                if (unit === massErrorTypeTh) {
+                    $(this).text(massErrorTypePpm);
+                    options.massErrorPlotDefaultUnit = massErrorTypePpm;
+                } else if (unit === massErrorTypePpm) {
+                    $(this).text(massErrorTypeTh);
+                    options.massErrorPlotDefaultUnit = massErrorTypeTh;
+                }
+                
+                // Replot with new unit
+                plotPeakMassErrorPlot(container, datasets);
+            });
+        }
+
+        // Set up plot event handlers for hover tooltips
+        plotDiv[0].on('plotly_hover', function(eventData) {
+            if ($(getElementSelector(container, elementIds.enableTooltip) + ":checked").length > 0) {
+                var point = eventData.points[0];
+                var x = point.x.toFixed(2);
+                var y = point.y.toFixed(4);
+                
+                // Remove any existing tooltip
+                $(getElementSelector(container, elementIds.msmstooltip)).remove();
+                
+                // Show custom tooltip
+                showTooltip(container, point.event.pageX, point.event.pageY, 
+                    "m/z: " + x + "<br>error: " + y, options);
+            }
         });
 
-        var massErrorPlot = $.plot(placeholder, data, massErrorPlotOptions);
-
-        // Display clickable mass error unit.
-        var o = massErrorPlot.getPlotOffset();
-        placeholder.append('<div id="' + getElementId(container, elementIds.massErrorPlot_unit) + '" class="link"  '
-			   + 'style="position:absolute; left:'
-			   + (o.left + 5) + 'px;top:' + (o.top + 4) + 'px;'
-			   + 'background-color:yellow; font-style:italic">'
-			   + options.massErrorPlotDefaultUnit + '</div>');
-        // Toggle mass error unit on click.
-        $(getElementSelector(container, elementIds.massErrorPlot_unit)).click(function () {
-            var unit = $(this).text();
-
-            if (unit === massErrorTypeTh) {
-                $(this).text(massErrorTypePpm);
-                options.massErrorPlotDefaultUnit = massErrorTypePpm;
-            }
-            else if (unit === massErrorTypePpm) {
-                $(this).text(massErrorTypeTh);
-                options.massErrorPlotDefaultUnit = massErrorTypeTh;
-            }
-            plotPeakMassErrorPlot(container, datasets);
+        plotDiv[0].on('plotly_unhover', function() {
+            $(getElementSelector(container, elementIds.msmstooltip)).remove();
         });
-    }
+
+        // Handle plot relayout events (zoom/pan)
+        plotDiv[0].on('plotly_relayout', function(eventdata) {
+            if (eventdata['xaxis.range[0]'] !== undefined && eventdata['xaxis.range[1]'] !== undefined) {
+                // Update container zoom range to sync with main plot
+                var zoomRange = container.data("zoomRange") || {xaxis: {}, yaxis: {}};
+                zoomRange.xaxis.from = eventdata['xaxis.range[0]'];
+                zoomRange.xaxis.to = eventdata['xaxis.range[1]'];
+                container.data("zoomRange", zoomRange);
+            } else if (eventdata['xaxis.autorange']) {
+                // Reset zoom
+                var zoomRange = container.data("zoomRange");
+                if (zoomRange) {
+                    zoomRange.xaxis = {};
+                    container.data("zoomRange", zoomRange);
+                }
+            }
+        });
+}
 
     function displayTooltip(item, container, options, tooltip_xlabel, tooltip_ylabel) {
 
