@@ -492,133 +492,308 @@
 	}
     }
 
-    // -----------------------------------------------
-    // CREATE MS1 PLOT
-    // -----------------------------------------------
-    function createMs1Plot(container) {
+// -----------------------------------------------
+// CREATE MS1 PLOT (Plotly version)
+// -----------------------------------------------
+function createMs1Plot(container) {
+    var ms1zoomRange = container.data("ms1zoomRange");
+    var options = container.data("options");
+    var plotDiv = $(getElementSelector(container, elementIds.msPlot));
 
-        var ms1zoomRange = container.data("ms1zoomRange");
-        var options = container.data("options");
+    // Remove any previous plot
+    plotDiv.empty();
 
-	var data = [{data: options.ms1peaks, color: "#bbbbbb", labelType: 'none', hoverable: false, clickable: false}];
-	if(options.precursorPeaks) {
-	    if(options.precursorPeakClickFn)
-		data.push({data: options.precursorPeaks, color: "#ff0000", hoverable: true, clickable: true});
-	    else
-		data.push({data: options.precursorPeaks, color: "#ff0000", hoverable: false, clickable: false});
-	}
-
-	// the MS/MS plot should have been created by now.  This is a hack to get the plots aligned.
-	// We will set the y-axis labelWidth to this value.
-	var labelWidth = container.data("plot").getAxes().yaxis.labelWidth;
-
-        var precursorSelectionWin = [];
-        if(options.selWinLow && options.selWinHigh)
-        {
-            precursorSelectionWin = [{ color:"#ccd8e2", xaxis:{from:options.selWinLow, to:options.selWinHigh}, }];
+    // Prepare optimized data traces
+    var traces = [];
+    
+    // Add MS1 peaks as a single trace with NaN separators for vertical lines
+    if (options.ms1peaks && options.ms1peaks.length > 0) {
+        var ms1_x = [];
+        var ms1_y = [];
+        
+        for (var i = 0; i < options.ms1peaks.length; i++) {
+            var mz = options.ms1peaks[i][0];
+            var intensity = options.ms1peaks[i][1];
+            
+            // Add vertical line points
+            ms1_x.push(mz, mz, null); // null creates line break
+            ms1_y.push(0, intensity, null);
         }
-	var ms1plotOptions = {
-	    series: { peaks: {show: true, shadowSize: 0}, shadowSize: 0},
-	    grid: { show: true,
-		    hoverable: true,
-		    autoHighlight: true,
-		    clickable: true,
-                    markings: precursorSelectionWin,
-		    borderWidth: 1,
-		    labelMargin: 1},
-	    selection: { mode: "xy", color: "#F0E68C" },
-	    xaxis: { tickLength: 2, tickColor: "#000" },
-	    yaxis: { tickLength: 0, tickColor: "#fff", ticks: [], labelWidth: labelWidth }
-	};
-
-	if(ms1zoomRange) {
-	    ms1plotOptions.xaxis.min = ms1zoomRange.xaxis.from;
-	    ms1plotOptions.xaxis.max = ms1zoomRange.xaxis.to;
-	    ms1plotOptions.yaxis.min = 0; // ms1zoomRange.yaxis.from;
-	    ms1plotOptions.yaxis.max = ms1zoomRange.yaxis.to;
-	}
-
-	var placeholder = $(getElementSelector(container, elementIds.msPlot));
-	var ms1plot = $.plot(placeholder, data, ms1plotOptions);
-        container.data("ms1plot", ms1plot);
-
-
-	// Mark the precursor peak with a green triangle.
-	if(options.precursorMz) {
-
-            var o = ms1plot.pointOffset({ x: options.precursorMz, y: options.precursorIntensity});
-            var ctx = ms1plot.getCanvas().getContext("2d");
-            ctx.beginPath();
-            ctx.moveTo(o.left-10, o.top-5);
-            ctx.lineTo(o.left-10, o.top + 5);
-            ctx.lineTo(o.left-10 + 10, o.top);
-            ctx.lineTo(o.left-10, o.top-5);
-            ctx.fillStyle = "#008800";
-            ctx.fill();
-            placeholder.append('<div style="position:absolute;left:' + (o.left + 4) + 'px;top:' + (o.top-4) + 'px;color:#000;font-size:smaller">'+options.precursorMz.toFixed(2)+'</div>');
-
-	}
-
-	// mark the scan number if we have it
-	o = ms1plot.getPlotOffset();
-	if(options.ms1scanLabel) {
-	    placeholder.append('<div style="position:absolute;left:' + (o.left + 4) + 'px;top:' + (o.top+4) + 'px;color:#666;font-size:smaller">MS1 scan: '+options.ms1scanLabel+'</div>');
-	}
-
-	// zoom out icon on plot right hand corner if we are not already zoomed in to the precursor.
-	if(container.data("ms1zoomRange")) {
-	    placeholder.append('<div id="'+getElementId(container, elementIds.ms1plot_zoom_out)+'" class="zoom_out_link"  style="position:absolute; left:'
-			       + (o.left + ms1plot.width() - 40) + 'px;top:' + (o.top+4) + 'px;"></div>');
-
-	    $(getElementSelector(container, elementIds.ms1plot_zoom_out)).click( function() {
-		container.data("ms1zoomRange", null);
-		createMs1Plot(container);
-	    });
-	}
-	else {
-	    placeholder.append('<div id="'+getElementId(container, elementIds.ms1plot_zoom_in)+'" class="zoom_in_link"  style="position:absolute; left:'
-			       + (o.left + ms1plot.width() - 20) + 'px;top:' + (o.top+4) + 'px;"></div>');
-	    $(getElementSelector(container, elementIds.ms1plot_zoom_in)).click( function() {
-		var ranges = {};
-		ranges.yaxis = {};
-		ranges.xaxis = {};
-		ranges.yaxis.from = 0.0;
-		ranges.yaxis.to = options.maxIntensityInMs1ZoomRange;
-
-                ranges.xaxis.from = options.precursorMz - 5.0;
-                ranges.xaxis.to = options.precursorMz + 5.0;
-
-                container.data("ms1zoomRange", ranges);
-		createMs1Plot(container);
-	    });
-	}
+        
+        traces.push({
+            x: ms1_x,
+            y: ms1_y,
+            mode: 'lines',
+            line: {color: '#bbbbbb', width: 1},
+            hovertemplate: 'm/z: %{x:.2f}<br>intensity: %{y:.0f}<extra></extra>',
+            showlegend: false,
+            connectgaps: false
+        });
     }
 
+    // Add precursor peaks as a single trace if available
+    if (options.precursorPeaks && options.precursorPeaks.length > 0) {
+        var prec_x = [];
+        var prec_y = [];
+        
+        for (var i = 0; i < options.precursorPeaks.length; i++) {
+            var mz = options.precursorPeaks[i][0];
+            var intensity = options.precursorPeaks[i][1];
+            
+            // Add vertical line points
+            prec_x.push(mz, mz, null); // null creates line break
+            prec_y.push(0, intensity, null);
+        }
+        
+        traces.push({
+            x: prec_x,
+            y: prec_y,
+            mode: 'lines',
+            line: {color: '#ff0000', width: 2},
+            hovertemplate: 'm/z: %{x:.2f}<br>intensity: %{y:.0f}<extra></extra>',
+            showlegend: false,
+            connectgaps: false
+        });
+    }
+
+    // Calculate layout dimensions and ranges
+    var width = options.width || 700;
+    var height = 120;
+    
+    // Set axis ranges
+    var xAxisRange = null;
+    var yAxisRange = null;
+    
+    if (ms1zoomRange) {
+        xAxisRange = [ms1zoomRange.xaxis.from, ms1zoomRange.xaxis.to];
+        yAxisRange = [0, ms1zoomRange.yaxis.to];
+    }
+
+    // Layout configuration
+    var layout = {
+        width: width,
+        height: height,
+        margin: {l: 60, r: 20, t: 20, b: 40},
+        xaxis: {
+            title: 'm/z',
+            range: xAxisRange,
+            zeroline: false,
+            showgrid: true,
+            gridcolor: '#f0f0f0',
+            linecolor: '#000000',
+            linewidth: 0.5,
+            mirror: true,
+            tickfont: {
+                size: 10
+            }
+        },
+        yaxis: {
+            title: 'Intensity',
+            range: yAxisRange,
+            zeroline: false,
+            rangemode: 'tozero',
+            showgrid: true,
+            gridcolor: '#f0f0f0',
+            linecolor: '#000000',
+            linewidth: 0.5,
+            mirror: true,
+            tickfont: {
+                size: 10
+            }
+        },
+        plot_bgcolor: 'white',
+        paper_bgcolor: 'white',
+        hovermode: 'closest',
+        showlegend: false,
+        autosize: false,
+    };
+
+    // Add precursor selection window if available
+    if (options.selWinLow && options.selWinHigh) {
+        layout.shapes.push({
+            type: 'rect',
+            xref: 'x',
+            yref: 'paper',
+            x0: options.selWinLow,
+            y0: 0,
+            x1: options.selWinHigh,
+            y1: 1,
+            fillcolor: 'rgba(204,216,226,0.3)',
+            line: {
+                width: 0
+            }
+        });
+    }
+
+    // Create the plot
+    Plotly.newPlot(plotDiv[0], traces, layout, {displayModeBar: false, responsive: false});
+
+    // Store plot reference
+    container.data("ms1plot", plotDiv[0]);
+
+    // Add precursor peak marker (green triangle) if available
+    if (options.precursorMz && options.precursorIntensity) {
+        // Add triangle marker as annotation
+        var annotation = {
+            x: options.precursorMz,
+            y: options.precursorIntensity,
+            text: '▶',  // Right-pointing triangle
+            showarrow: false,
+            font: {
+                color: '#008800',
+                size: 14
+            },
+            xanchor: 'right',
+            yanchor: 'middle'
+        };
+        
+        // Add precursor m/z label
+        var labelAnnotation = {
+            x: options.precursorMz,
+            y: options.precursorIntensity,
+            text: options.precursorMz.toFixed(2),
+            showarrow: false,
+            font: {
+                color: '#000000',
+                size: 10
+            },
+            xanchor: 'left',
+            yanchor: 'middle',
+            xshift: 5,
+            bgcolor: 'rgba(255,255,255,0.8)'
+        };
+        
+        layout.annotations = [annotation, labelAnnotation];
+    }
+
+    // Add scan label if available
+    if (options.ms1scanLabel) {
+        var scanAnnotation = {
+            x: 0.02,
+            y: 0.95,
+            text: 'MS1 scan: ' + options.ms1scanLabel,
+            showarrow: false,
+            font: {
+                color: '#666666',
+                size: 10
+            },
+            xref: 'paper',
+            yref: 'paper',
+            xanchor: 'left',
+            yanchor: 'top',
+            bgcolor: 'rgba(255,255,255,0.8)'
+        };
+        
+        if (!layout.annotations) layout.annotations = [];
+        layout.annotations.push(scanAnnotation);
+    }
+
+    // Update layout if we have annotations
+    if (layout.annotations) {
+        Plotly.relayout(plotDiv[0], {annotations: layout.annotations});
+    }
+
+    // Add zoom controls
+    var zoomControlsHtml = '';
+    
+    if (container.data("ms1zoomRange")) {
+        // Zoom out button
+        zoomControlsHtml = '<div id="' + getElementId(container, elementIds.ms1plot_zoom_out) + 
+            '" class="zoom_out_link" style="position:absolute; right:10px; top:4px; z-index:10; ' +
+            'cursor:pointer; background:#fff; border:1px solid #ccc; padding:2px 6px; font-size:10px;">Zoom Out</div>';
+        
+        plotDiv.append(zoomControlsHtml);
+        
+        $(getElementSelector(container, elementIds.ms1plot_zoom_out)).click(function() {
+            container.data("ms1zoomRange", null);
+            createMs1Plot(container);
+        });
+    } else {
+        // Zoom in button
+        zoomControlsHtml = '<div id="' + getElementId(container, elementIds.ms1plot_zoom_in) + 
+            '" class="zoom_in_link" style="position:absolute; right:10px; top:4px; z-index:10; ' +
+            'cursor:pointer; background:#fff; border:1px solid #ccc; padding:2px 6px; font-size:10px;">Zoom In</div>';
+        
+        plotDiv.append(zoomControlsHtml);
+        
+        $(getElementSelector(container, elementIds.ms1plot_zoom_in)).click(function() {
+            var ranges = {
+                xaxis: {
+                    from: options.precursorMz - 5.0,
+                    to: options.precursorMz + 5.0
+                },
+                yaxis: {
+                    from: 0.0,
+                    to: options.maxIntensityInMs1ZoomRange
+                }
+            };
+            container.data("ms1zoomRange", ranges);
+            createMs1Plot(container);
+        });
+    }
+
+    // Set up plot interactions
+    setupMs1PlotInteractions(container);
+}
+
     // -----------------------------------------------
-    // SET UP INTERACTIVE ACTIONS FOR MS1 PLOT
+    // SET UP INTERACTIVE ACTIONS FOR MS1 PLOT (Updated for Plotly)
     // -----------------------------------------------
     function setupMs1PlotInteractions(container) {
-
-	var placeholder = $(getElementSelector(container, elementIds.msPlot));
+        var plotDiv = $(getElementSelector(container, elementIds.msPlot));
         var options = container.data("options");
 
-	// allow clicking on plot if we have a function to handle the click
-	if(options.precursorPeakClickFn != null) {
-	    placeholder.bind("plotclick", function (event, pos, item) {
+        // Handle precursor peak clicks if callback function is provided
+        if (options.precursorPeakClickFn != null) {
+            plotDiv[0].on('plotly_click', function(eventData) {
+                if (eventData.points && eventData.points.length > 0) {
+                    var point = eventData.points[0];
+                    // Check if this is a precursor peak (red line)
+                    if (point.data.line && point.data.line.color === '#ff0000') {
+                        options.precursorPeakClickFn(point.x);
+                    }
+                }
+            });
+        }
 
-		if (item) {
-		    //highlight(item.series, item.datapoint);
-		    options.precursorPeakClickFn(item.datapoint[0]);
-		}
-	    });
-	}
+        // Handle plot selection for zooming
+        plotDiv[0].on('plotly_selected', function(eventData) {
+            if (eventData && eventData.range) {
+                var ranges = {
+                    xaxis: {
+                        from: eventData.range.x[0],
+                        to: eventData.range.x[1]
+                    },
+                    yaxis: {
+                        from: eventData.range.y[0],
+                        to: eventData.range.y[1]
+                    }
+                };
+                container.data("ms1zoomRange", ranges);
+                createMs1Plot(container);
+            }
+        });
 
-	// allow zooming the plot
-	placeholder.bind("plotselected", function (event, ranges) {
-            container.data("ms1zoomRange", ranges);
-	    createMs1Plot(container);
-	});
-
+        // Handle zoom events from relayout
+        plotDiv[0].on('plotly_relayout', function(eventdata) {
+            if (eventdata['xaxis.range[0]'] !== undefined && eventdata['xaxis.range[1]'] !== undefined) {
+                var ranges = {
+                    xaxis: {
+                        from: eventdata['xaxis.range[0]'],
+                        to: eventdata['xaxis.range[1]']
+                    }
+                };
+                if (eventdata['yaxis.range[0]'] !== undefined && eventdata['yaxis.range[1]'] !== undefined) {
+                    ranges.yaxis = {
+                        from: eventdata['yaxis.range[0]'],
+                        to: eventdata['yaxis.range[1]']
+                    };
+                }
+                container.data("ms1zoomRange", ranges);
+            } else if (eventdata['xaxis.autorange'] || eventdata['yaxis.autorange']) {
+                container.data("ms1zoomRange", null);
+            }
+        });
     }
 
     // -----------------------------------------------
@@ -691,7 +866,7 @@
         var layout = {
             width: width,
             height: height,
-            margin: {l: 60, r: 20, t: 20, b: 60},
+            margin: {l: 60, r: 20, t: 20, b: 20},
             xaxis: {
                 title: 'm/z',
                 range: zoomRange && zoomRange.xaxis ? [zoomRange.xaxis.from, zoomRange.xaxis.to] : [xrange.xmin, xrange.xmax],
@@ -896,7 +1071,7 @@
         // Layout configuration
         var layout = {
             width: options.width || 700,
-            height: 150,
+            height: 120,
             margin: {l: 60, r: 20, t: 20, b: 40},
             xaxis: {
                 title: 'm/z',
