@@ -693,16 +693,16 @@ function createMs1Plot(container) {
         Plotly.relayout(plotDiv[0], {annotations: layout.annotations});
     }
 
-    // Add zoom controls
-    var zoomControlsHtml = '';
+    // Add zoom controls positioned relative to the plot
+    // First ensure the plot div has relative positioning
+    plotDiv.css('position', 'relative');
     
     if (container.data("ms1zoomRange")) {
         // Zoom out button
-        zoomControlsHtml = '<div id="' + getElementId(container, elementIds.ms1plot_zoom_out) + 
-            '" class="zoom_out_link" style="position:absolute; right:10px; top:4px; z-index:10; ' +
-            'cursor:pointer; background:#fff; border:1px solid #ccc; padding:2px 6px; font-size:10px;">Zoom Out</div>';
+        var zoomOutBtn = '<div id="' + getElementId(container, elementIds.ms1plot_zoom_out) + 
+            '" class="zoom_out_link" style="position:absolute; right:20px; top:25px; z-index:1000;"></div>';
         
-        plotDiv.append(zoomControlsHtml);
+        plotDiv.append(zoomOutBtn);
         
         $(getElementSelector(container, elementIds.ms1plot_zoom_out)).click(function() {
             container.data("ms1zoomRange", null);
@@ -710,11 +710,10 @@ function createMs1Plot(container) {
         });
     } else {
         // Zoom in button
-        zoomControlsHtml = '<div id="' + getElementId(container, elementIds.ms1plot_zoom_in) + 
-            '" class="zoom_in_link" style="position:absolute; right:10px; top:4px; z-index:10; ' +
-            'cursor:pointer; background:#fff; border:1px solid #ccc; padding:2px 6px; font-size:10px;">Zoom In</div>';
+        var zoomInBtn = '<div id="' + getElementId(container, elementIds.ms1plot_zoom_in) + 
+            '" class="zoom_in_link" style="position:absolute; right:20px; top:25px; z-index:1000;"></div>';
         
-        plotDiv.append(zoomControlsHtml);
+        plotDiv.append(zoomInBtn);
         
         $(getElementSelector(container, elementIds.ms1plot_zoom_in)).click(function() {
             var ranges = {
@@ -1115,12 +1114,36 @@ function createMs1Plot(container) {
         Plotly.newPlot(plotDiv[0], traces, layout, {displayModeBar: false, responsive: false});
 
         // Add mass error unit toggle button
+        // First ensure the plot div has relative positioning
+        plotDiv.css('position', 'relative');
+
         var unitButtonId = getElementId(container, elementIds.massErrorPlot_unit);
         if ($('#' + unitButtonId).length === 0) {
             plotDiv.append('<div id="' + unitButtonId + '" class="link" ' +
-                'style="position:absolute; left:5px; top:4px; ' +
-                'background-color:yellow; font-style:italic; padding:2px 4px; cursor:pointer; z-index:10;">' +
+                'style="position:absolute; left:65px; top:25px; ' +
+                'background-color:#e9ecef; border:1px solid #dee2e6; border-radius:2px; ' +
+                'font-size:10px; font-weight:bold; color:red; padding:2px 4px; ' +
+                'cursor:pointer; z-index:10; transition:all 0.2s ease; ' +
+                'box-shadow:0 1px 1px rgba(0,0,0,0.1); user-select:none;">' +
                 options.massErrorPlotDefaultUnit + '</div>');
+
+            // Add hover effects
+            $('#' + unitButtonId).hover(
+                function() {
+                    $(this).css({
+                        'background-color': '#e9ecef',
+                        'border-color': '#adb5bd',
+                        'box-shadow': '0 2px 2px rgba(0,0,0,0.15)'
+                    });
+                },
+                function() {
+                    $(this).css({
+                        'background-color': '#f8f9fa',
+                        'border-color': '#dee2e6',
+                        'box-shadow': '0 1px 1px rgba(0,0,0,0.1)'
+                    });
+                }
+            );
 
             // Toggle mass error unit on click
             $('#' + unitButtonId).click(function () {
