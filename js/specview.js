@@ -622,48 +622,138 @@
     }
 
     // -----------------------------------------------
-    // CREATE MS/MS PLOT
+    // CREATE MS/MS PLOT (SVG/Plotly version)
     // -----------------------------------------------
     function createPlot(container, datasets) {
+        var plotDiv = $(getElementSelector(container, elementIds.msmsplot));
+        var options = container.data("options");
+        var zoomRange = container.data("zoomRange");
+        var width = options.width || 700;
+        var height = options.height || 450;
 
-	var plot;
-	if(!container.data("zoomRange"))
-        {
-            plot = $.plot($(getElementSelector(container, elementIds.msmsplot)), datasets,  container.data("plotOptions"));
+        // Remove any previous Plotly plot
+        plotDiv.empty();
+
+        // Convert datasets to Plotly traces (vertical lines + text labels)
+        var traces = [];
+        datasets.forEach(function(series) {
+            if (!series || !series.data) return;
+            var color = series.color || '#bbbbbb';
+            var yaxis = (series.yaxis === 2) ? 'y2' : 'y';
+            // 1. Vertical lines for each peak
+            for (var i = 0; i < series.data.length; i++) {
+                var mz = series.data[i][0];
+                var intensity = series.data[i][1];
+                traces.push({
+                    x: [mz, mz],
+                    y: [0, intensity],
+                    mode: 'lines',
+                    line: {color: color, width: 1},
+                    hoverinfo: 'x+y',
+                    showlegend: false,
+                    yaxis: yaxis
+                });
+            }
+            // 2. Text labels above each peak (if present)
+            if (series.labels && series.labels.length) {
+                var label_x = [], label_y = [], label_text = [];
+                // Use a fixed offset in y units (e.g., 1% of max y in the plot)
+                var maxY = 0;
+                for (var i = 0; i < series.data.length; i++) {
+                    if (series.data[i][1] > maxY) maxY = series.data[i][1];
+                }
+                var yOffset = maxY * 0.01 || 1; // fallback to 1 if maxY is 0
+                for (var i = 0; i < series.data.length; i++) {
+                    if (series.labels[i]) {
+                        label_x.push(series.data[i][0]);
+                        label_y.push(series.data[i][1] + yOffset); // fixed offset above peak
+                        label_text.push(series.labels[i]);
+                    }
+                }
+                if (label_x.length > 0) {
+                    traces.push({
+                        x: label_x,
+                        y: label_y,
+                        text: label_text,
+                        mode: 'text',
+                        textposition: 'top center',
+                        textfont: {color: color, size: 12},
+                        hoverinfo: 'none',
+                        showlegend: false,
+                        yaxis: yaxis
+                    });
+                }
+            }
+        });
+
+        // Layout
+        var xrange = getPlotXRange(options);
+        var layout = {
+            width: width,
+            height: height,
+            margin: {l: 60, r: 20, t: 20, b: 60},
+            xaxis: {
+                title: 'm/z',
+                range: zoomRange && zoomRange.xaxis ? [zoomRange.xaxis.from, zoomRange.xaxis.to] : [xrange.xmin, xrange.xmax],
+                zeroline: false
+            },
+            yaxis: {
+                title: 'Intensity',
+                zeroline: false,
+                rangemode: 'tozero',
+                fixedrange: false
+            },
+            bargap: 0.1,
+            hovermode: 'closest',
+            showlegend: true
+        };
+        // Support butterfly (double y-axis) plot
+        if (datasets.some(s => s.yaxis === 2)) {
+            layout.yaxis2 = {
+                overlaying: 'y',
+                side: 'bottom',
+                rangemode: 'tozero',
+                zeroline: false
+            };
         }
-	else {
-            var zoomRange = container.data("zoomRange");
-            var selectOpts = {};
-	    if($(getElementSelector(container, elementIds.zoom_x)).is(":checked"))
-		selectOpts.xaxis = { min: zoomRange.xaxis.from, max: zoomRange.xaxis.to };
-	    if($(getElementSelector(container, elementIds.zoom_y)).is(":checked"))
-		selectOpts.yaxis = { min: 0, max: zoomRange.yaxis.to };
 
-	    plot = $.plot(getElementSelector(container, elementIds.msmsplot), datasets,
-			  $.extend(true, {}, container.data("plotOptions"), selectOpts));
+        Plotly.newPlot(plotDiv[0], traces, layout, {displayModeBar: false, responsive: true});
 
-	    // zoom out icon on plot right hand corner
-	    var o = plot.getPlotOffset();
-	    $(getElementSelector(container, elementIds.msmsplot)).append('<div id="'+getElementId(container, elementIds.ms2plot_zoom_out)+'" class="zoom_out_link" style="position:absolute; left:'
-									 + (o.left + plot.width() - 20) + 'px;top:' + (o.top+4) + 'px"></div>');
+        // Zoom/Reset logic
+        plotDiv[0].on('plotly_relayout', function(eventdata) {
+            if (eventdata['xaxis.range[0]'] !== undefined && eventdata['xaxis.range[1]'] !== undefined) {
+                container.data('zoomRange', {
+                    xaxis: {from: eventdata['xaxis.range[0]'], to: eventdata['xaxis.range[1]']},
+                    yaxis: {to: eventdata['yaxis.range[1]']}
+                });
+            } else if (eventdata['xaxis.autorange']) {
+                container.data('zoomRange', null);
+            }
+        });
 
-	    $(getElementSelector(container, elementIds.ms2plot_zoom_out)).click( function() {
-                resetZoom(container);
-	    });
-	}
+        // Add zoom out button if zoomed
+        if (zoomRange) {
+            var zoomOutBtnId = getElementId(container, elementIds.ms2plot_zoom_out);
+            if ($('#' + zoomOutBtnId).length === 0) {
+                plotDiv.append('<div id="' + zoomOutBtnId + '" class="zoom_out_link" style="position:absolute; right:10px; top:10px; z-index:10; cursor:pointer; background:#fff; border:1px solid #ccc; padding:2px 6px;">Reset Zoom</div>');
+                $('#' + zoomOutBtnId).click(function() {
+                    container.data('zoomRange', null);
+                    createPlot(container, datasets);
+                });
+            }
+        }
 
-	// we have re-calculated and re-drawn everything..
-	container.data("massTypeChanged", false);
-	container.data("massErrorChanged",false);
-	container.data("peakAssignmentTypeChanged", false);
-	container.data("peakLabelTypeChanged", false);
-	container.data("selectedNeutralLossChanged", false);
-	container.data("plot", plot);
+        // we have re-calculated and re-drawn everything..
+        container.data("massTypeChanged", false);
+        container.data("massErrorChanged", false);
+        container.data("peakAssignmentTypeChanged", false);
+        container.data("peakLabelTypeChanged", false);
+        container.data("selectedNeutralLossChanged", false);
+        container.data("plot", plotDiv[0]);
 
-        // Draw the peak mass error plot
+        // Draw the peak mass error plot (still FLOT, or migrate separately)
         plotPeakMassErrorPlot(container, datasets);
-        if(container.data("options").showMassErrorPlot === false)
-        {
+        if(container.data("options").showMassErrorPlot === false) {
             $(getElementSelector(container, elementIds.massErrorPlot)).hide();
         }
     }
@@ -808,123 +898,103 @@
     // SET UP INTERACTIVE ACTIONS FOR MS/MS PLOT
     // -----------------------------------------------
     function setupInteractions (container, options) {
+        // ZOOMING and TOOLTIPS are handled by Plotly for MS/MS plot
 
-	// ZOOMING
-	$(getElementSelector(container, elementIds.msmsplot)).bind("plotselected", function (event, ranges) {
-	    container.data("zoomRange", ranges);
-	    createPlot(container, getDatasets(container));
-	});
+        // ZOOM AXES
+        $(getElementSelector(container, elementIds.zoom_x)).click(function() {
+            resetAxisZoom(container);
+        });
+        $(getElementSelector(container, elementIds.zoom_y)).click(function() {
+            resetAxisZoom(container);
+        });
 
-	// ZOOM AXES
-	$(getElementSelector(container, elementIds.zoom_x)).click(function() {
-	    resetAxisZoom(container);
-	});
-	$(getElementSelector(container, elementIds.zoom_y)).click(function() {
-	    resetAxisZoom(container);
-	});
+        // RESET ZOOM
+        $(getElementSelector(container, elementIds.resetZoom)).click(function() {
+            resetZoom(container);
+        });
 
-	// RESET ZOOM
-	$(getElementSelector(container, elementIds.resetZoom)).click(function() {
-	    resetZoom(container);
-	});
-
-	// UPDATE
-	$(getElementSelector(container, elementIds.update)).click(function() {
-	    container.data("zoomRange", null); // zoom out fully
-	    setMassError(container);
-	    plotAccordingToChoices(container);
-	});
-
-	// TOOLTIPS
-	$(getElementSelector(container, elementIds.msmsplot)).bind("plothover", function (event, pos, item) {
-	    displayTooltip(item, container, options, "m/z", "intensity");
-	});
-	$(getElementSelector(container, elementIds.enableTooltip)).click(function() {
-	    $(getElementSelector(container, elementIds.msmstooltip)).remove();
-	});
+        // UPDATE
+        $(getElementSelector(container, elementIds.update)).click(function() {
+            container.data("zoomRange", null); // zoom out fully
+            setMassError(container);
+            plotAccordingToChoices(container);
+        });
 
         // PLOT MASS ERROR CHECKBOX
         $(getElementSelector(container, elementIds.massErrorPlot_option)).click(function() {
-	    var plotDiv = $(getElementSelector(container, elementIds.massErrorPlot));
-	    if($(this).is(':checked'))
-	    {
+            var plotDiv = $(getElementSelector(container, elementIds.massErrorPlot));
+            if($(this).is(':checked')) {
                 plotDiv.show();
-	    }
-	    else
-	    {
+            } else {
                 plotDiv.hide();
-	    }
+            }
         });
 
-
-	// SHOW / HIDE ION SERIES; UPDATE ON MASS TYPE CHANGE;
-	// PEAK ASSIGNMENT TYPE CHANGED; PEAK LABEL TYPE CHANGED
-	var ionChoiceContainer = $(getElementSelector(container, elementIds.ion_choice));
-	ionChoiceContainer.find("input").click(function() {
-	    plotAccordingToChoices(container);
+        // SHOW / HIDE ION SERIES; UPDATE ON MASS TYPE CHANGE;
+        // PEAK ASSIGNMENT TYPE CHANGED; PEAK LABEL TYPE CHANGED
+        var ionChoiceContainer = $(getElementSelector(container, elementIds.ion_choice));
+        ionChoiceContainer.find("input").click(function() {
+            plotAccordingToChoices(container);
         });
 
         $(getElementSelector(container, elementIds.immoniumIons)).click(function() {
-	    plotAccordingToChoices(container);
+            plotAccordingToChoices(container);
         });
 
         $(getElementSelector(container, elementIds.reporterIons)).click(function() {
-	    plotAccordingToChoices(container);
+            plotAccordingToChoices(container);
         });
 
         $(getElementSelector(container, elementIds.labelPrecursor)).click(function() {
-	    plotAccordingToChoices(container);
-	});
+            plotAccordingToChoices(container);
+        });
 
-	// Plot neutral loss options
-	var neutralLossContainer = $(getElementSelector(container, elementIds.nl_choice));
-	neutralLossContainer.find("input").click(function() {
-	    container.data("selectedNeutralLossChanged", true);
-	    var selectedNeutralLosses = getNeutralLosses(container);
-	    container.data("options").peptide.recalculateLossOptions(selectedNeutralLosses, container.data("options").maxNeutralLossCount);
-	    plotAccordingToChoices(container);
-	});
+        // Plot neutral loss options
+        var neutralLossContainer = $(getElementSelector(container, elementIds.nl_choice));
+        neutralLossContainer.find("input").click(function() {
+            container.data("selectedNeutralLossChanged", true);
+            var selectedNeutralLosses = getNeutralLosses(container);
+            container.data("options").peptide.recalculateLossOptions(selectedNeutralLosses, container.data("options").maxNeutralLossCount);
+            plotAccordingToChoices(container);
+        });
 
         // Mass type options
-	container.find("input[name='"+getRadioName(container, "massTypeOpt")+"']").click(function() {
-	    container.data("massTypeChanged", true);
-	    plotAccordingToChoices(container);
-	});
+        container.find("input[name='"+getRadioName(container, "massTypeOpt")+"']").click(function() {
+            container.data("massTypeChanged", true);
+            plotAccordingToChoices(container);
+        });
 
         // Peak detect checkbox
         $(getElementSelector(container, elementIds.peakDetect)).click(function() {
-	    container.data("peakAssignmentTypeChanged", true);
-	    plotAccordingToChoices(container);
+            container.data("peakAssignmentTypeChanged", true);
+            plotAccordingToChoices(container);
         });
 
-	container.find("input[name='"+getRadioName(container, "peakAssignOpt")+"']").click(function() {
-	    container.data("peakAssignmentTypeChanged", true);
-	    plotAccordingToChoices(container);
-	});
+        container.find("input[name='"+getRadioName(container, "peakAssignOpt")+"']").click(function() {
+            container.data("peakAssignmentTypeChanged", true);
+            plotAccordingToChoices(container);
+        });
 
         $(getElementSelector(container, elementIds.deselectIonsLink)).click(function() {
-	    ionChoiceContainer.find("input:checkbox:checked").each(function() {
-		$(this).attr('checked', "");
-	    });
+            ionChoiceContainer.find("input:checkbox:checked").each(function() {
+                $(this).attr('checked', "");
+            });
+            plotAccordingToChoices(container);
+        });
 
-	    plotAccordingToChoices(container);
-	});
+        container.find("input[name='"+getRadioName(container, "peakLabelOpt")+"']").click(function() {
+            container.data("peakLabelTypeChanged", true);
+            plotAccordingToChoices(container);
+        });
 
-	container.find("input[name='"+getRadioName(container, "peakLabelOpt")+"']").click(function() {
-	    container.data("peakLabelTypeChanged", true);
-	    plotAccordingToChoices(container);
-	});
+        // MOVING THE ION TABLE
+        makeIonTableMovable(container, options);
 
+        // CHANGING THE PLOT SIZE
+        makePlotResizable(container);
 
-	// MOVING THE ION TABLE
-	makeIonTableMovable(container, options);
-
-	// CHANGING THE PLOT SIZE
-	makePlotResizable(container);
-
-	// PRINT SPECTRUM
-	printPlot(container);
-
+        // PRINT SPECTRUM
+        printPlot(container);
     }
 
     function resetZoom(container) {
@@ -2037,15 +2107,15 @@
 	parentTable += '<td colspan="3" class="bar noprint" valign="top" align="center" id="'+getElementId(container, elementIds.ionTableLoc2)+'" > ';
 	parentTable += '<div align="center" style="width:100%;font-size:10pt;"> ';
 	parentTable += '</div> ';
-	parentTable += '</td> ';
-	parentTable += '</tr> ';
+ parentTable += '</td> ';
+ parentTable += '</tr> ';
 
-	parentTable += '</tbody> ';
-	parentTable += '</table> ';
+ parentTable += '</tbody> ';
+ parentTable += '</table> ';
 
-	container.append(parentTable);
+ container.append(parentTable);
 
-	return container;
+ return container;
     }
 
 
