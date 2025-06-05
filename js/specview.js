@@ -622,14 +622,16 @@
     }
 
     // -----------------------------------------------
-    // CREATE MS/MS PLOT (SVG/Plotly version)
+    // CREATE MS/MS PLOT (Plotly version with % intensity)
     // -----------------------------------------------
-    function createPlot(container, datasets) {
+    function createPlot(container, datasets) 
+    {
         var plotDiv = $(getElementSelector(container, elementIds.msmsplot));
         var options = container.data("options");
         var zoomRange = container.data("zoomRange");
         var width = options.width || 700;
         var height = options.height || 450;
+        var maxInt = container.data("maxInt");
 
         // Remove any previous Plotly plot
         plotDiv.empty();
@@ -640,6 +642,7 @@
             if (!series || !series.data) return;
             var color = series.color || '#bbbbbb';
             var yaxis = (series.yaxis === 2) ? 'y2' : 'y';
+            
             // 1. Vertical lines for each peak
             for (var i = 0; i < series.data.length; i++) {
                 var mz = series.data[i][0];
@@ -649,20 +652,17 @@
                     y: [0, intensity],
                     mode: 'lines',
                     line: {color: color, width: 1},
-                    hoverinfo: 'x+y',
+                    hovertemplate: 'm/z: %{x:.1f}<br>intensity: %{y:.0f}<extra></extra>',
                     showlegend: false,
                     yaxis: yaxis
                 });
             }
+            
             // 2. Text labels above each peak (if present)
             if (series.labels && series.labels.length) {
                 var label_x = [], label_y = [], label_text = [];
                 // Use a fixed offset in y units (e.g., 1% of max y in the plot)
-                var maxY = 0;
-                for (var i = 0; i < series.data.length; i++) {
-                    if (series.data[i][1] > maxY) maxY = series.data[i][1];
-                }
-                var yOffset = maxY * 0.01 || 1; // fallback to 1 if maxY is 0
+                var yOffset = maxInt * 0.01 || 1; // fallback to 1 if maxInt is 0
                 for (var i = 0; i < series.data.length; i++) {
                     if (series.labels[i]) {
                         label_x.push(series.data[i][0]);
@@ -686,7 +686,7 @@
             }
         });
 
-        // Layout
+        // Layout with percentage y-axis formatting
         var xrange = getPlotXRange(options);
         var layout = {
             width: width,
@@ -696,15 +696,27 @@
                 title: 'm/z',
                 range: zoomRange && zoomRange.xaxis ? [zoomRange.xaxis.from, zoomRange.xaxis.to] : [xrange.xmin, xrange.xmax],
                 zeroline: false,
+                linecolor: '#000000',
+                linewidth: 0.5,
+                mirror: true,
                 tickfont: {
                     size: 10
-                },
+                }
             },
             yaxis: {
                 title: 'Intensity',
                 zeroline: false,
                 rangemode: 'tozero',
                 fixedrange: false,
+                // Format y-axis as percentages
+                tickformat: '.0%',
+                tickvals: [0, maxInt*0.1, maxInt*0.2, maxInt*0.3, maxInt*0.4, maxInt*0.5,
+                        maxInt*0.6, maxInt*0.7, maxInt*0.8, maxInt*0.9, maxInt],
+                ticktext: ['0%', '10%', '20%', '30%', '40%', '50%', 
+                        '60%', '70%', '80%', '90%', '100%'],
+                linecolor: '#000000',
+                linewidth: 0.5,
+                mirror: true,
                 tickfont: {
                     size: 10
                 }
@@ -712,33 +724,48 @@
             bargap: 0.1,
             hovermode: 'closest',
             showlegend: true,
-            // Add plot border
-            shapes: [{
-                type: 'rect',
-                xref: 'paper',
-                yref: 'paper',
-                x0: 0,
-                y0: 0,
-                x1: 1,
-                y1: 1,
-                line: {
-                    color: '#000000',
-                    width: 0.5
-                },
-                fillcolor: 'rgba(0,0,0,0)'
-            }]
+            autosize: false,
+            plot_bgcolor: 'white',
+            paper_bgcolor: 'white'
         };
+        
         // Support butterfly (double y-axis) plot
-        if (datasets.some(s => s.yaxis === 2)) {
+        var hasSecondYAxis = datasets.some(s => s.yaxis === 2);
+        if (hasSecondYAxis) {
+            var maxIntDown = 0;
+            // Find max intensity for second y-axis
+            datasets.forEach(function(series) {
+                if (series.yaxis === 2 && series.data) {
+                    series.data.forEach(function(point) {
+                        if (point[1] > maxIntDown) maxIntDown = point[1];
+                    });
+                }
+            });
+            
             layout.yaxis2 = {
                 overlaying: 'y',
                 side: 'bottom',
                 rangemode: 'tozero',
-                zeroline: false
+                zeroline: false,
+                // Format second y-axis as percentages
+                tickformat: '.0%',
+                tickvals: [0, maxIntDown*0.1, maxIntDown*0.2, maxIntDown*0.3, maxIntDown*0.4, maxIntDown*0.5,
+                        maxIntDown*0.6, maxIntDown*0.7, maxIntDown*0.8, maxIntDown*0.9, maxIntDown],
+                ticktext: ['0%', '10%', '20%', '30%', '40%', '50%', 
+                        '60%', '70%', '80%', '90%', '100%'],
+                // Transform for butterfly effect
+                scaleanchor: 'y',
+                scaleratio: -1,
+                linecolor: '#000000',
+                linewidth: 0.5,
+                mirror: true,
+                tickfont: {
+                    size: 10
+                }
             };
         }
 
-        Plotly.newPlot(plotDiv[0], traces, layout, {displayModeBar: false, responsive: true});
+        Plotly.newPlot(plotDiv[0], traces, layout, {displayModeBar: false, responsive: false});
 
         // Zoom/Reset logic
         plotDiv[0].on('plotly_relayout', function(eventdata) {
@@ -772,12 +799,12 @@
         container.data("selectedNeutralLossChanged", false);
         container.data("plot", plotDiv[0]);
 
-        // Draw the peak mass error plot (still FLOT, or migrate separately)
+        // Draw the peak mass error plot (updated Plotly version)
         plotPeakMassErrorPlot(container, datasets);
         if(container.data("options").showMassErrorPlot === false) {
             $(getElementSelector(container, elementIds.massErrorPlot)).hide();
         }
-    }
+}
 
     function getPlotXRange(options) {
 
@@ -878,7 +905,7 @@
                 showgrid: true,
                 gridcolor: '#f0f0f0',
                 linecolor: '#000000',
-                linewidth: 1,
+                linewidth: 0.5,
                 mirror: true,
                 fixedrange: false,
                 tickfont: {
@@ -894,7 +921,7 @@
                 showgrid: true,
                 gridcolor: '#f0f0f0',
                 linecolor: '#000000',
-                linewidth: 1,
+                linewidth: 0.5,
                 mirror: true,
                 fixedrange: false,
                 tickfont: {
@@ -906,22 +933,7 @@
             paper_bgcolor: 'white',
             hovermode: 'closest',
             showlegend: false,
-            autosize: false,
-            // Add plot border
-            shapes: [{
-                type: 'rect',
-                xref: 'paper',
-                yref: 'paper',
-                x0: 0,
-                y0: 0,
-                x1: 1,
-                y1: 1,
-                line: {
-                    color: '#000000',
-                    width: 0.05
-                },
-                fillcolor: 'rgba(0,0,0,0)'
-            }]
+            autosize: false
         };
 
         // Create the plot
