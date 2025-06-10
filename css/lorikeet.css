@@ -50,6 +50,7 @@ div.lorikeet .zoom_out_link {
 	width:20px;
 	height:20px;
 	cursor:pointer;
+	display: inline-block;
 }
 div.lorikeet .zoom_in_link {
 	background-image: url('../images/lorikeet/zoom_in.png');
@@ -57,6 +58,7 @@ div.lorikeet .zoom_in_link {
 	width:20px;
 	height:20px;
 	cursor:pointer;
+	display: inline-block;
 }
 
 
@@ -114,4 +116,11 @@ div.lorikeet .varModsTable td {
 	text-align: left;
 	font-size: 10pt;
     padding: 1px 5px 1px 0px;
+}
+
+/* Plotly modebar positioning */
+.js-plotly-plot .plotly .modebar {
+    top: 0px;
+    right: 15px;
+    position: absolute;
 }

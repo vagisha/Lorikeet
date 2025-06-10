@@ -45,7 +45,8 @@
                 massErrorUnit: massErrorTypeTh, // 'Th' or 'ppm'
                 extraPeakSeries:[],
                 showIonTable: true,
-                showViewingOptions: true,
+                showViewingOptions: false,
+                showToolbar: true,
                 showOptionsTable: true,
                 peakLabelOpt: 'mz',
                 showSequenceInfo: true,
@@ -106,6 +107,11 @@
             ionTableLoc1: "ionTableLoc1",
             ionTableLoc2: "ionTableLoc2",
             viewOptionsDiv: "viewOptionsDiv",
+            toolbarDiv: "toolbarDiv",
+            zoom_in_link: "zoom_in_link",
+            zoom_out_link: "zoom_out_link",
+            download_png_link: "download_png_link",
+            download_pdf_link: "download_pdf_link",
             moveIonTable: "moveIonTable",
             modInfo: "modInfo",
             ionTableDiv: "ionTableDiv",
@@ -198,6 +204,7 @@
         makeOptionsTable(container,[1,2,3], defaultSelectedIons);
 
         makeViewingOptions(container, options);
+        // createToolbar(container, options);
 
         if(options.showSequenceInfo) {
             showSequenceInfo(container, options);
@@ -865,7 +872,7 @@ function createMs1Plot(container) {
         var layout = {
             width: width,
             height: height,
-            margin: {l: 60, r: 20, t: 20, b: 20},
+            margin: {l: 60, r: 20, t: 25, b: 20},
             xaxis: {
                 title: 'm/z',
                 range: zoomRange && zoomRange.xaxis ? [zoomRange.xaxis.from, zoomRange.xaxis.to] : [xrange.xmin, xrange.xmax],
@@ -939,7 +946,60 @@ function createMs1Plot(container) {
             };
         }
 
-        Plotly.newPlot(plotDiv[0], traces, layout, {displayModeBar: false, responsive: false});
+        const sequence = options.sequence;
+
+        const faFileImageRegular = {
+            width: 384,
+            height: 512,
+            path: 'M64 464c-8.8 0-16-7.2-16-16L48 64c0-8.8 7.2-16 16-16l160 0 0 80c0 17.7 14.3 32 32 32l80 0 0 288c0 8.8-7.2 16-16 16L64 464zM64 0C28.7 0 0 28.7 0 64L0 448c0 35.3 28.7 64 64 64l256 0c35.3 0 64-28.7 64-64l0-293.5c0-17-6.7-33.3-18.7-45.3L274.7 18.7C262.7 6.7 246.5 0 229.5 0L64 0zm96 256a32 32 0 1 0 -64 0 32 32 0 1 0 64 0zm69.2 46.9c-3-4.3-7.9-6.9-13.2-6.9s-10.2 2.6-13.2 6.9l-41.3 59.7-11.9-19.1c-2.9-4.7-8.1-7.5-13.6-7.5s-10.6 2.8-13.6 7.5l-40 64c-3.1 4.9-3.2 11.1-.4 16.2s8.2 8.2 14 8.2l48 0 32 0 40 0 72 0c6 0 11.4-3.3 14.2-8.6s2.4-11.6-1-16.5l-72-104z'
+        };
+
+
+        const faFileSvgIcon = {
+            width: 384,
+            height: 512,
+            path: 'M320 464c8.8 0 16-7.2 16-16l0-288-80 0c-17.7 0-32-14.3-32-32l0-80L64 48c-8.8 0-16 7.2-16 16l0 384c0 8.8 7.2 16 16 16l256 0zM0 64C0 28.7 28.7 0 64 0L229.5 0c17 0 33.3 6.7 45.3 18.7l90.5 90.5c12 12 18.7 28.3 18.7 45.3L384 448c0 35.3-28.7 64-64 64L64 512c-35.3 0-64-28.7-64-64L0 64z'
+        };
+
+        const customSvgDownloadButton = {
+            name: 'custom-svg-download',
+            title: 'Download SVG',
+            icon: faFileSvgIcon,
+            click: function(gd) {
+            Plotly.downloadImage(gd, { format: 'svg', filename: sequence + '_lorikeet' });
+            }
+        };
+
+        const customDownloadPngButton = {
+            name: 'custom-png-download',
+            title: 'Download PNG',
+            icon: faFileImageRegular,
+            click: function(gd) {
+                    Plotly.downloadImage(gd, {
+                    format: 'png',
+                    filename: sequence + '_lorikeet',
+                    scale: 2
+                });
+            }
+        };
+
+        Plotly.newPlot(plotDiv[0], traces, layout, 
+            {
+                modeBarButtons: [[
+                    customSvgDownloadButton,
+                    customDownloadPngButton,
+                    'resetScale2d'  
+                ]],
+                toImageButtonOptions: {
+                    format: 'svg',
+                    filename: sequence + '_lorikeet'
+                },
+                displaylogo: false,
+                displayModeBar: 'false',
+                responsive: false
+            }
+        );
+        // Plotly.newPlot(plotDiv[0], traces, layout, {displayModeBar: false, responsive: false});
 
         // Zoom/Reset logic
         plotDiv[0].on('plotly_relayout', function(eventdata) {
@@ -2370,20 +2430,20 @@ function createMs1Plot(container) {
 
         var rowspan = 2;
 
-	var parentTable = '<table cellpadding="0" cellspacing="5" class="lorikeet-outer-table"> ';
-	parentTable += '<tbody> ';
-	parentTable += '<tr> ';
+        var parentTable = '<table cellpadding="0" cellspacing="5" class="lorikeet-outer-table"> ';
+        parentTable += '<tbody> ';
+        parentTable += '<tr> ';
 
-	// Header
-	parentTable += '<td colspan="3" class="bar"> ';
-	parentTable += '</div> ';
-	parentTable += '</td> ';
-	parentTable += '</tr> ';
+        // Header
+        parentTable += '<td colspan="3" class="bar"> ';
+        parentTable += '</div> ';
+        parentTable += '</td> ';
+        parentTable += '</tr> ';
 
-	// options table
-	parentTable += '<tr> ';
-	parentTable += '<td rowspan="'+rowspan+'" valign="top" id="'+getElementId(container, elementIds.optionsTable)+'"> ';
-	parentTable += '</td> ';
+        // options table
+        parentTable += '<tr> ';
+        parentTable += '<td rowspan="'+rowspan+'" valign="top" id="'+getElementId(container, elementIds.optionsTable)+'"> ';
+        parentTable += '</td> ';
 
         if(options.showSequenceInfo) {
             // placeholder for sequence, m/z, scan number etc
@@ -2412,39 +2472,41 @@ function createMs1Plot(container) {
         }
 
 
-	// placeholders for the ms/ms plot
-	parentTable += '<tr> ';
-	parentTable += '<td style="background-color: white; padding:5px; border:1px dotted #cccccc;" valign="top" align="center"> ';
-	parentTable += '<div id="'+getElementId(container, elementIds.msmsplot)+'" align="bottom" style="width:'+options.width+'px;height:'+options.height+'px;"></div> ';
+        parentTable += '<tr> ';
+        parentTable += '<td style="background-color: white; padding:5px; border:1px dotted #cccccc;" valign="top" align="center"> ';
+        // Placeholder for toolbar
+        parentTable += '<div id="'+getElementId(container, elementIds.toolbarDiv) + '" style="text-align: right; margin-bottom: 0px;"></div> ';
+	    // placeholders for the ms/ms plot
+	    parentTable += '<div id="'+getElementId(container, elementIds.msmsplot)+'" align="bottom" style="width:'+options.width+'px;height:'+options.height+'px; margin-top: 0px;"></div> ';
 
-	// placeholder for viewing options (zoom, plot size etc.)
-	parentTable += '<div id="'+getElementId(container, elementIds.viewOptionsDiv)+'" align="top" style="margin-top:15px;"></div> ';
+	    // placeholder for viewing options (zoom, plot size etc.)
+	    parentTable += '<div id="'+getElementId(container, elementIds.viewOptionsDiv)+'" align="top" valign="right" style="margin-top:15px;"></div> ';
 
         // placeholder for peak mass error plot
         parentTable += '<div id="'+getElementId(container, elementIds.massErrorPlot)+'" style="width:'+options.width+'px;height:100px;"></div> ';
 
-	// placeholder for ms1 plot (if data is available)
-	if(options.ms1peaks && options.ms1peaks.length > 0) {
-	    parentTable += '<div id="'+getElementId(container, elementIds.msPlot)+'" style="width:'+options.width+'px;height:100px;"></div> ';
-	}
-	parentTable += '</td> ';
-	parentTable += '</tr> ';
+	    // placeholder for ms1 plot (if data is available)
+	    if(options.ms1peaks && options.ms1peaks.length > 0) {
+	        parentTable += '<div id="'+getElementId(container, elementIds.msPlot)+'" style="width:'+options.width+'px;height:100px;"></div> ';
+	    }
+	    parentTable += '</td> ';
+	    parentTable += '</tr> ';
 
 
-	// Footer & placeholder for moving ion table
-	parentTable += '<tr> ';
-	parentTable += '<td colspan="3" class="bar noprint" valign="top" align="center" id="'+getElementId(container, elementIds.ionTableLoc2)+'" > ';
-	parentTable += '<div align="center" style="width:100%;font-size:10pt;"> ';
-	parentTable += '</div> ';
- parentTable += '</td> ';
- parentTable += '</tr> ';
+	    // Footer & placeholder for moving ion table
+        parentTable += '<tr> ';
+        parentTable += '<td colspan="3" class="bar noprint" valign="top" align="center" id="'+getElementId(container, elementIds.ionTableLoc2)+'" > ';
+        parentTable += '<div align="center" style="width:100%;font-size:10pt;"> ';
+        parentTable += '</div> ';
+        parentTable += '</td> ';
+        parentTable += '</tr> ';
 
- parentTable += '</tbody> ';
- parentTable += '</table> ';
+        parentTable += '</tbody> ';
+        parentTable += '</table> ';
 
- container.append(parentTable);
+        container.append(parentTable);
 
- return container;
+        return container;
     }
 
 
@@ -2830,23 +2892,23 @@ function createMs1Plot(container) {
 
         var options = container.data("options");
 
-	var myContent = '';
+        var myContent = '';
 
-	// reset zoom option
-	myContent += '<nobr> ';
-	myContent += '<span style="width:100%; font-size:8pt; margin-top:5px; color:sienna;">Click and drag in the plot to zoom</span> ';
-	myContent += 'X:<input id="'+getElementId(container, elementIds.zoom_x)+'" type="checkbox" value="X" checked="checked"/> ';
-	myContent += '&nbsp;Y:<input id="'+getElementId(container, elementIds.zoom_y)+'" type="checkbox" value="Y" /> ';
-	myContent += '&nbsp;<input id="'+getElementId(container, elementIds.resetZoom)+'" type="button" value="Zoom Out" /> ';
-	myContent += '&nbsp;<input id="'+getElementId(container, elementIds.printLink)+'" type="button" value="Print" /> ';
-	myContent += '</nobr> ';
+        // reset zoom option
+        myContent += '<nobr> ';
+        myContent += '<span style="width:100%; font-size:8pt; margin-top:5px; color:sienna;">Click and drag in the plot to zoom</span> ';
+        myContent += 'X:<input id="'+getElementId(container, elementIds.zoom_x)+'" type="checkbox" value="X" checked="checked"/> ';
+        myContent += '&nbsp;Y:<input id="'+getElementId(container, elementIds.zoom_y)+'" type="checkbox" value="Y" /> ';
+        myContent += '&nbsp;<input id="'+getElementId(container, elementIds.resetZoom)+'" type="button" value="Zoom Out" /> ';
+        myContent += '&nbsp;<input id="'+getElementId(container, elementIds.printLink)+'" type="button" value="Print" /> ';
+        myContent += '</nobr> ';
 
-	myContent += '&nbsp;&nbsp;';
+        myContent += '&nbsp;&nbsp;';
 
-	// tooltip option
-	myContent += '<nobr> ';
-	myContent += '<label><input id="'+getElementId(container, elementIds.enableTooltip)+'" type="checkbox">Enable tooltip </label>';
-	myContent += '</nobr> ';
+        // tooltip option
+        myContent += '<nobr> ';
+        myContent += '<label><input id="'+getElementId(container, elementIds.enableTooltip)+'" type="checkbox">Enable tooltip </label>';
+        myContent += '</nobr> ';
 
         // mass error plot option
         myContent += '<nobr>';
@@ -2858,11 +2920,51 @@ function createMs1Plot(container) {
         myContent += '>Plot mass error </label>';
         myContent += '</nobr>';
 
-	myContent += '<br>';
+        myContent += '<br>';
 
-	$(getElementSelector(container, elementIds.viewOptionsDiv)).append(myContent);
-	if(!options.showViewingOptions) {
-            $(getElementSelector(container, elementIds.viewOptionsDiv)).hide();
+        const elSelector = getElementSelector(container, elementIds.viewOptionsDiv);
+        $(elSelector).append(myContent);
+        if(options.showViewingOptions === false) 
+        {
+            // console.log("Hiding viewing options");
+            $(elSelector).hide();
+        }
+    }
+
+    function createToolbar(container) {
+
+        var options = container.data("options");
+
+        var myContent = '';
+
+        // Zoom options
+        myContent += '';
+        /*
+        toolbarDiv: "toolbarDiv",
+            zoom_in_link: "zoom_in_link",
+            zoom_out_link: "zoom_out_link",
+            download_png_link: "download_png_link",
+            download_pdf_link: "download_pdf_link",
+            */
+        // const zoomInLinkId = getElementId(container, elementIds.zoom_in_link);
+        // const zoomOutLinkId = getElementId(container, elementIds.zoom_out_link);
+        const downloadPngLinkId = getElementId(container, elementIds.download_png_link);
+        const downloadPdfLinkId = getElementId(container, elementIds.download_pdf_link);    
+
+        // myContent += '<span id="' + zoomInLinkId + '" class="zoom_in_link" alt="Zoom In" title="Zoom In"></span>';
+        // myContent += '<span id="' + zoomOutLinkId + '" class="zoom_out_link" alt="Zoom Out" title="Zoom Out"></span>';
+        myContent += '&nbsp;<input id="'+getElementId(container, elementIds.resetZoom)+'" type="button" value="Zoom Out" /> ';
+        myContent += '<span id="' + downloadPngLinkId + '" class="download_png_link" alt="Download PNG" title="Download PNG"></span>';
+        myContent += '<span id="' + downloadPdfLinkId + '" class="download_pdf_link" alt="Download PDF" title="Download PDF"></span>';
+        myContent += ' ';
+
+
+        const elSelector = getElementSelector(container, elementIds.toolbarDiv);
+        $(elSelector).append(myContent);
+        if(options.showToolbar === false) 
+        {
+            // console.log("Hiding toolbar");
+            $(elSelector).hide();
         }
     }
 
