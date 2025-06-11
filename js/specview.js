@@ -989,11 +989,32 @@ function createMs1Plot(container) {
             title: 'Reset Zoom',
             icon: Plotly.Icons.autoscale,
             click: function(gd) {
-                Plotly.relayout(gd, {
-                    'xaxis.range': [xrange.xmin, xrange.xmax],
-                    'yaxis.autorange': true,  // Auto-fit y-axis to the reset x-range
-                    'xaxis.autorange': false
-                });
+                const container = $(gd).closest('.lorikeet');
+                const msmsPlot = container.data('msmsPlotDiv')[0];
+                const errorPlot = container.data('massErrorPlotDiv')[0];
+
+                // Reset x and y on MS/MS plot
+                if (msmsPlot)
+                {
+                    Plotly.relayout(msmsPlot, {
+                        'xaxis.range': [xrange.xmin, xrange.xmax],
+                        'yaxis.autorange': true,
+                        'xaxis.autorange': false
+                    });
+                }
+
+                // Reset x and y on Mass Error plot
+                if (errorPlot)
+                {
+                    Plotly.relayout(errorPlot, {
+                        'xaxis.range': [xrange.xmin, xrange.xmax],
+                        'yaxis.autorange': true,
+                        'xaxis.autorange': false
+                    });
+                }
+
+                // Clear the shared zoom state
+                container.data('zoomRange', null);
             }
         };
 
@@ -1023,8 +1044,16 @@ function createMs1Plot(container) {
                     xaxis: {from: eventdata['xaxis.range[0]'], to: eventdata['xaxis.range[1]']},
                     yaxis: {to: eventdata['yaxis.range[1]']}
                 });
-            } else if (eventdata['xaxis.autorange']) {
+                plotPeakMassErrorPlot(container, datasets);  // Sync mass error plot with zoom
+            } 
+            else if (
+                Object.keys(eventdata).length === 0 ||  // Zoom reset via double-click or toolbar
+                eventdata['xaxis.autorange']            // Fallback if autorange is present) 
+            )
+            {
+                // console.log("Zoom reset detected (autorange) createPlot");
                 container.data('zoomRange', null);
+                plotPeakMassErrorPlot(container, datasets); // Keep plots synced on reset
             }
         });
 
@@ -1035,7 +1064,8 @@ function createMs1Plot(container) {
         container.data("peakLabelTypeChanged", false);
         container.data("selectedNeutralLossChanged", false);
         container.data("plot", plotDiv[0]);
-
+        container.data("msmsPlotDiv", plotDiv); // Store reference to the MS/MS plot div
+        
         // Draw the peak mass error plot (updated Plotly version)
         plotPeakMassErrorPlot(container, datasets);
         if(container.data("options").showMassErrorPlot === false) {
@@ -1253,16 +1283,25 @@ function createMs1Plot(container) {
                 zoomRange.xaxis.from = eventdata['xaxis.range[0]'];
                 zoomRange.xaxis.to = eventdata['xaxis.range[1]'];
                 container.data("zoomRange", zoomRange);
-            } else if (eventdata['xaxis.autorange']) {
+                createPlot(container, getDatasets(container));
+            } 
+            else if (
+                Object.keys(eventdata).length === 0 ||  // Zoom reset via double-click or toolbar
+                eventdata['xaxis.autorange']            // Fallback if autorange is present)    
+            ) {
                 // Reset zoom
+                // console.log("Zoom reset detected (autorange) plotPeakMassErrorPlot");
                 var zoomRange = container.data("zoomRange");
                 if (zoomRange) {
                     zoomRange.xaxis = {};
                     container.data("zoomRange", zoomRange);
                 }
+                createPlot(container, getDatasets(container)); 
             }
         });
-}
+
+        container.data("massErrorPlotDiv", plotDiv); // Store reference to the mass error plot div
+    }
 
     function displayTooltip(item, container, options, tooltip_xlabel, tooltip_ylabel) {
 
