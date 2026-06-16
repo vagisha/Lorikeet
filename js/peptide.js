@@ -42,6 +42,38 @@ function Peptide(seq, staticModifications, varModifications, ntermModification, 
         return varMods;
     }
 
+    //----------------------------------------------------------------------------------------
+    // Returns the sequence with modifications shown as [mass] where mass is amino acid mass + modification mass
+    //----------------------------------------------------------------------------------------
+    this.getModifiedSequence = function() {
+        var modSeq = '';
+        var aa_obj = new AminoAcid();
+        
+        for(var i = 0; i < sequence.length; i++) {            
+            
+            var aa = sequence.charAt(i);
+            var varMod = varMods[i + 1];  // varMods index is 1-based
+            
+            if(varMod) {
+                // Calculate total modification mass including both static and variable mods
+                var mass = varMod.modMass;  // Start with variable mod mass
+                
+                // Add static mod mass if present
+                var staticMod = staticMods[aa];
+                if(staticMod) {
+                    mass += staticMod.modMass;
+                }
+                
+                // Only show brackets for positions with variable modifications
+                modSeq += aa + '[' + Math.round(mass * 10) / 10 + ']';  // Round to 1 decimal place
+            } 
+            else {
+                modSeq += aa;
+            }
+        }
+        return modSeq;
+    }
+
     // index: index in the seq.
     // If this is a N-term sequence we will sum up the mass of the amino acids in the sequence up-to index (exclusive).
     // If this is a C-term sequence we will sum up the mass of the amino acids in the sequence starting from index (inclusive)

@@ -45,22 +45,21 @@
                 massErrorUnit: massErrorTypeTh, // 'Th' or 'ppm'
                 extraPeakSeries:[],
                 showIonTable: true,
-                showViewingOptions: false,
-                showToolbar: true,
+                showViewingOptions: true,
                 showOptionsTable: true,
                 peakLabelOpt: 'mz',
                 showSequenceInfo: true,
                 labelImmoniumIons: true,
                 labelPrecursorPeak: true,
                 labelReporters: false,
-	            tooltipZIndex: null,
+	        tooltipZIndex: null,
                 showMassErrorPlot: false,
                 massErrorPlotDefaultUnit: null,
-	            userReporterIons: null,
+	        userReporterIons: null,
                 // Use these options to set the x-axis range (m/z) that will be displayed when the MS/MS plot is initialized or is fully zoomed out.
                 // Default range is the min and max peak m/z.
                 minDisplayMz: null,
-	            maxDisplayMz: null
+	        maxDisplayMz: null
         };
 
 	var options = $.extend(true, {}, defaults, opts); // this is a deep copy
@@ -107,11 +106,6 @@
             ionTableLoc1: "ionTableLoc1",
             ionTableLoc2: "ionTableLoc2",
             viewOptionsDiv: "viewOptionsDiv",
-            toolbarDiv: "toolbarDiv",
-            zoom_in_link: "zoom_in_link",
-            zoom_out_link: "zoom_out_link",
-            download_png_link: "download_png_link",
-            download_pdf_link: "download_pdf_link",
             moveIonTable: "moveIonTable",
             modInfo: "modInfo",
             ionTableDiv: "ionTableDiv",
@@ -119,12 +113,12 @@
             fileinfo: "fileinfo",
             seqinfo: "seqinfo",
             peakDetect: "peakDetect",
-	        labelPrecursor: "labelPrecursor",
+	    labelPrecursor: "labelPrecursor",
             immoniumIons: "immoniumIons",
-            reporterIons: "reporterIons",
-            showIonTable: "showIonTable",
-            anticInfo: "anticInfo",
-            userReporterIons: "userReporterIons"
+	    reporterIons: "reporterIons",
+	    showIonTable: "showIonTable",
+	    anticInfo: "anticInfo",
+	    userReporterIons: "userReporterIons"
     };
 
     function getElementId(container, elementId){
@@ -204,7 +198,6 @@
         makeOptionsTable(container,[1,2,3], defaultSelectedIons);
 
         makeViewingOptions(container, options);
-        // createToolbar(container, options);
 
         if(options.showSequenceInfo) {
             showSequenceInfo(container, options);
@@ -396,7 +389,8 @@
             maxIntDown = getMaxInt(options.peaks2);   //get max peaks value in down peak list
         }
 
-	    var __xrange = getPlotXRange(options);
+	var __xrange = getPlotXRange(options);
+
 
         var plotOptions =  {
             series: {
@@ -498,564 +492,178 @@
 	}
     }
 
-// -----------------------------------------------
-// CREATE MS1 PLOT (Plotly version)
-// -----------------------------------------------
-function createMs1Plot(container) {
-    var ms1zoomRange = container.data("ms1zoomRange");
-    var options = container.data("options");
-    var plotDiv = $(getElementSelector(container, elementIds.msPlot));
+    // -----------------------------------------------
+    // CREATE MS1 PLOT
+    // -----------------------------------------------
+    function createMs1Plot(container) {
 
-    // Remove any previous plot
-    plotDiv.empty();
+        var ms1zoomRange = container.data("ms1zoomRange");
+        var options = container.data("options");
 
-    // Prepare optimized data traces
-    var traces = [];
-    
-    // Add MS1 peaks as a single trace with NaN separators for vertical lines
-    if (options.ms1peaks && options.ms1peaks.length > 0) {
-        var ms1_x = [];
-        var ms1_y = [];
-        
-        for (var i = 0; i < options.ms1peaks.length; i++) {
-            var mz = options.ms1peaks[i][0];
-            var intensity = options.ms1peaks[i][1];
-            
-            // Add vertical line points
-            ms1_x.push(mz, mz, null); // null creates line break
-            ms1_y.push(0, intensity, null);
+	var data = [{data: options.ms1peaks, color: "#bbbbbb", labelType: 'none', hoverable: false, clickable: false}];
+	if(options.precursorPeaks) {
+	    if(options.precursorPeakClickFn)
+		data.push({data: options.precursorPeaks, color: "#ff0000", hoverable: true, clickable: true});
+	    else
+		data.push({data: options.precursorPeaks, color: "#ff0000", hoverable: false, clickable: false});
+	}
+
+	// the MS/MS plot should have been created by now.  This is a hack to get the plots aligned.
+	// We will set the y-axis labelWidth to this value.
+	var labelWidth = container.data("plot").getAxes().yaxis.labelWidth;
+
+        var precursorSelectionWin = [];
+        if(options.selWinLow && options.selWinHigh)
+        {
+            precursorSelectionWin = [{ color:"#ccd8e2", xaxis:{from:options.selWinLow, to:options.selWinHigh}, }];
         }
-        
-        traces.push({
-            x: ms1_x,
-            y: ms1_y,
-            mode: 'lines',
-            line: {color: '#bbbbbb', width: 1},
-            hovertemplate: 'm/z: %{x:.2f}<br>intensity: %{y:.0f}<extra></extra>',
-            showlegend: false,
-            connectgaps: false
-        });
+	var ms1plotOptions = {
+	    series: { peaks: {show: true, shadowSize: 0}, shadowSize: 0},
+	    grid: { show: true,
+		    hoverable: true,
+		    autoHighlight: true,
+		    clickable: true,
+                    markings: precursorSelectionWin,
+		    borderWidth: 1,
+		    labelMargin: 1},
+	    selection: { mode: "xy", color: "#F0E68C" },
+	    xaxis: { tickLength: 2, tickColor: "#000" },
+	    yaxis: { tickLength: 0, tickColor: "#fff", ticks: [], labelWidth: labelWidth }
+	};
+
+	if(ms1zoomRange) {
+	    ms1plotOptions.xaxis.min = ms1zoomRange.xaxis.from;
+	    ms1plotOptions.xaxis.max = ms1zoomRange.xaxis.to;
+	    ms1plotOptions.yaxis.min = 0; // ms1zoomRange.yaxis.from;
+	    ms1plotOptions.yaxis.max = ms1zoomRange.yaxis.to;
+	}
+
+	var placeholder = $(getElementSelector(container, elementIds.msPlot));
+	var ms1plot = $.plot(placeholder, data, ms1plotOptions);
+        container.data("ms1plot", ms1plot);
+
+
+	// Mark the precursor peak with a green triangle.
+	if(options.precursorMz) {
+
+            var o = ms1plot.pointOffset({ x: options.precursorMz, y: options.precursorIntensity});
+            var ctx = ms1plot.getCanvas().getContext("2d");
+            ctx.beginPath();
+            ctx.moveTo(o.left-10, o.top-5);
+            ctx.lineTo(o.left-10, o.top + 5);
+            ctx.lineTo(o.left-10 + 10, o.top);
+            ctx.lineTo(o.left-10, o.top-5);
+            ctx.fillStyle = "#008800";
+            ctx.fill();
+            placeholder.append('<div style="position:absolute;left:' + (o.left + 4) + 'px;top:' + (o.top-4) + 'px;color:#000;font-size:smaller">'+options.precursorMz.toFixed(2)+'</div>');
+
+	}
+
+	// mark the scan number if we have it
+	o = ms1plot.getPlotOffset();
+	if(options.ms1scanLabel) {
+	    placeholder.append('<div style="position:absolute;left:' + (o.left + 4) + 'px;top:' + (o.top+4) + 'px;color:#666;font-size:smaller">MS1 scan: '+options.ms1scanLabel+'</div>');
+	}
+
+	// zoom out icon on plot right hand corner if we are not already zoomed in to the precursor.
+	if(container.data("ms1zoomRange")) {
+	    placeholder.append('<div id="'+getElementId(container, elementIds.ms1plot_zoom_out)+'" class="zoom_out_link"  style="position:absolute; left:'
+			       + (o.left + ms1plot.width() - 40) + 'px;top:' + (o.top+4) + 'px;"></div>');
+
+	    $(getElementSelector(container, elementIds.ms1plot_zoom_out)).click( function() {
+		container.data("ms1zoomRange", null);
+		createMs1Plot(container);
+	    });
+	}
+	else {
+	    placeholder.append('<div id="'+getElementId(container, elementIds.ms1plot_zoom_in)+'" class="zoom_in_link"  style="position:absolute; left:'
+			       + (o.left + ms1plot.width() - 20) + 'px;top:' + (o.top+4) + 'px;"></div>');
+	    $(getElementSelector(container, elementIds.ms1plot_zoom_in)).click( function() {
+		var ranges = {};
+		ranges.yaxis = {};
+		ranges.xaxis = {};
+		ranges.yaxis.from = 0.0;
+		ranges.yaxis.to = options.maxIntensityInMs1ZoomRange;
+
+                ranges.xaxis.from = options.precursorMz - 5.0;
+                ranges.xaxis.to = options.precursorMz + 5.0;
+
+                container.data("ms1zoomRange", ranges);
+		createMs1Plot(container);
+	    });
+	}
     }
-
-    // Add precursor peaks as a single trace if available
-    if (options.precursorPeaks && options.precursorPeaks.length > 0) {
-        var prec_x = [];
-        var prec_y = [];
-        
-        for (var i = 0; i < options.precursorPeaks.length; i++) {
-            var mz = options.precursorPeaks[i][0];
-            var intensity = options.precursorPeaks[i][1];
-            
-            // Add vertical line points
-            prec_x.push(mz, mz, null); // null creates line break
-            prec_y.push(0, intensity, null);
-        }
-        
-        traces.push({
-            x: prec_x,
-            y: prec_y,
-            mode: 'lines',
-            line: {color: '#ff0000', width: 2},
-            hovertemplate: 'm/z: %{x:.2f}<br>intensity: %{y:.0f}<extra></extra>',
-            showlegend: false,
-            connectgaps: false
-        });
-    }
-
-    // Calculate layout dimensions and ranges
-    var width = options.width || 700;
-    var height = 120;
-    
-    // Set axis ranges
-    var xAxisRange = null;
-    var yAxisRange = null;
-    
-    if (ms1zoomRange) {
-        xAxisRange = [ms1zoomRange.xaxis.from, ms1zoomRange.xaxis.to];
-        yAxisRange = [0, ms1zoomRange.yaxis.to];
-    }
-
-    // Layout configuration
-    var layout = {
-        width: width,
-        height: height,
-        margin: {l: 60, r: 20, t: 20, b: 40},
-        xaxis: {
-            title: 'm/z',
-            range: xAxisRange,
-            zeroline: false,
-            showgrid: true,
-            gridcolor: '#f0f0f0',
-            linecolor: '#000000',
-            linewidth: 0.5,
-            mirror: true,
-            tickfont: {
-                size: 10
-            }
-        },
-        yaxis: {
-            title: 'Intensity',
-            range: yAxisRange,
-            zeroline: false,
-            rangemode: 'tozero',
-            showgrid: true,
-            gridcolor: '#f0f0f0',
-            linecolor: '#000000',
-            linewidth: 0.5,
-            mirror: true,
-            tickfont: {
-                size: 10
-            }
-        },
-        plot_bgcolor: 'white',
-        paper_bgcolor: 'white',
-        hovermode: 'closest',
-        showlegend: false,
-        autosize: false,
-    };
-
-    // Add precursor selection window if available
-    if (options.selWinLow && options.selWinHigh) {
-        layout.shapes.push({
-            type: 'rect',
-            xref: 'x',
-            yref: 'paper',
-            x0: options.selWinLow,
-            y0: 0,
-            x1: options.selWinHigh,
-            y1: 1,
-            fillcolor: 'rgba(204,216,226,0.3)',
-            line: {
-                width: 0
-            }
-        });
-    }
-
-    // Create the plot
-    Plotly.newPlot(plotDiv[0], traces, layout, {displayModeBar: false, responsive: false});
-
-    // Store plot reference
-    container.data("ms1plot", plotDiv[0]);
-
-    // Add precursor peak marker (green triangle) if available
-    if (options.precursorMz && options.precursorIntensity) {
-        // Add triangle marker as annotation
-        var annotation = {
-            x: options.precursorMz,
-            y: options.precursorIntensity,
-            text: '▶',  // Right-pointing triangle
-            showarrow: false,
-            font: {
-                color: '#008800',
-                size: 14
-            },
-            xanchor: 'right',
-            yanchor: 'middle'
-        };
-        
-        // Add precursor m/z label
-        var labelAnnotation = {
-            x: options.precursorMz,
-            y: options.precursorIntensity,
-            text: options.precursorMz.toFixed(2),
-            showarrow: false,
-            font: {
-                color: '#000000',
-                size: 10
-            },
-            xanchor: 'left',
-            yanchor: 'middle',
-            xshift: 5,
-            bgcolor: 'rgba(255,255,255,0.8)'
-        };
-        
-        layout.annotations = [annotation, labelAnnotation];
-    }
-
-    // Add scan label if available
-    if (options.ms1scanLabel) {
-        var scanAnnotation = {
-            x: 0.02,
-            y: 0.95,
-            text: 'MS1 scan: ' + options.ms1scanLabel,
-            showarrow: false,
-            font: {
-                color: '#666666',
-                size: 10
-            },
-            xref: 'paper',
-            yref: 'paper',
-            xanchor: 'left',
-            yanchor: 'top',
-            bgcolor: 'rgba(255,255,255,0.8)'
-        };
-        
-        if (!layout.annotations) layout.annotations = [];
-        layout.annotations.push(scanAnnotation);
-    }
-
-    // Update layout if we have annotations
-    if (layout.annotations) {
-        Plotly.relayout(plotDiv[0], {annotations: layout.annotations});
-    }
-
-    // Add zoom controls positioned relative to the plot
-    // First ensure the plot div has relative positioning
-    plotDiv.css('position', 'relative');
-    
-    if (container.data("ms1zoomRange")) {
-        // Zoom out button
-        var zoomOutBtn = '<div id="' + getElementId(container, elementIds.ms1plot_zoom_out) + 
-            '" class="zoom_out_link" style="position:absolute; right:20px; top:25px; z-index:1000;"></div>';
-        
-        plotDiv.append(zoomOutBtn);
-        
-        $(getElementSelector(container, elementIds.ms1plot_zoom_out)).click(function() {
-            container.data("ms1zoomRange", null);
-            createMs1Plot(container);
-        });
-    } else {
-        // Zoom in button
-        var zoomInBtn = '<div id="' + getElementId(container, elementIds.ms1plot_zoom_in) + 
-            '" class="zoom_in_link" style="position:absolute; right:20px; top:25px; z-index:1000;"></div>';
-        
-        plotDiv.append(zoomInBtn);
-        
-        $(getElementSelector(container, elementIds.ms1plot_zoom_in)).click(function() {
-            var ranges = {
-                xaxis: {
-                    from: options.precursorMz - 5.0,
-                    to: options.precursorMz + 5.0
-                },
-                yaxis: {
-                    from: 0.0,
-                    to: options.maxIntensityInMs1ZoomRange
-                }
-            };
-            container.data("ms1zoomRange", ranges);
-            createMs1Plot(container);
-        });
-    }
-
-    // Set up plot interactions
-    setupMs1PlotInteractions(container);
-}
 
     // -----------------------------------------------
-    // SET UP INTERACTIVE ACTIONS FOR MS1 PLOT (Updated for Plotly)
+    // SET UP INTERACTIVE ACTIONS FOR MS1 PLOT
     // -----------------------------------------------
     function setupMs1PlotInteractions(container) {
-        var plotDiv = $(getElementSelector(container, elementIds.msPlot));
+
+	var placeholder = $(getElementSelector(container, elementIds.msPlot));
         var options = container.data("options");
 
-        // Handle precursor peak clicks if callback function is provided
-        if (options.precursorPeakClickFn != null) {
-            plotDiv[0].on('plotly_click', function(eventData) {
-                if (eventData.points && eventData.points.length > 0) {
-                    var point = eventData.points[0];
-                    // Check if this is a precursor peak (red line)
-                    if (point.data.line && point.data.line.color === '#ff0000') {
-                        options.precursorPeakClickFn(point.x);
-                    }
-                }
-            });
-        }
+	// allow clicking on plot if we have a function to handle the click
+	if(options.precursorPeakClickFn != null) {
+	    placeholder.bind("plotclick", function (event, pos, item) {
 
-        // Handle plot selection for zooming
-        plotDiv[0].on('plotly_selected', function(eventData) {
-            if (eventData && eventData.range) {
-                var ranges = {
-                    xaxis: {
-                        from: eventData.range.x[0],
-                        to: eventData.range.x[1]
-                    },
-                    yaxis: {
-                        from: eventData.range.y[0],
-                        to: eventData.range.y[1]
-                    }
-                };
-                container.data("ms1zoomRange", ranges);
-                createMs1Plot(container);
-            }
-        });
+		if (item) {
+		    //highlight(item.series, item.datapoint);
+		    options.precursorPeakClickFn(item.datapoint[0]);
+		}
+	    });
+	}
 
-        // Handle zoom events from relayout
-        plotDiv[0].on('plotly_relayout', function(eventdata) {
-            if (eventdata['xaxis.range[0]'] !== undefined && eventdata['xaxis.range[1]'] !== undefined) {
-                var ranges = {
-                    xaxis: {
-                        from: eventdata['xaxis.range[0]'],
-                        to: eventdata['xaxis.range[1]']
-                    }
-                };
-                if (eventdata['yaxis.range[0]'] !== undefined && eventdata['yaxis.range[1]'] !== undefined) {
-                    ranges.yaxis = {
-                        from: eventdata['yaxis.range[0]'],
-                        to: eventdata['yaxis.range[1]']
-                    };
-                }
-                container.data("ms1zoomRange", ranges);
-            } else if (eventdata['xaxis.autorange'] || eventdata['yaxis.autorange']) {
-                container.data("ms1zoomRange", null);
-            }
-        });
+	// allow zooming the plot
+	placeholder.bind("plotselected", function (event, ranges) {
+            container.data("ms1zoomRange", ranges);
+	    createMs1Plot(container);
+	});
+
     }
 
     // -----------------------------------------------
-    // CREATE MS/MS PLOT (Plotly version with % intensity)
+    // CREATE MS/MS PLOT
     // -----------------------------------------------
-    function createPlot(container, datasets) 
-    {
-        var plotDiv = $(getElementSelector(container, elementIds.msmsplot));
-        var options = container.data("options");
-        var zoomRange = container.data("zoomRange");
-        var width = options.width || 700;
-        var height = options.height || 450;
-        var maxInt = container.data("maxInt"); // TODO
+    function createPlot(container, datasets) {
 
-        // Remove any previous Plotly plot
-        plotDiv.empty();
-
-        // Convert datasets to Plotly traces (vertical lines + text labels)
-        var traces = [];
-        datasets.forEach(function(series) {
-            if (!series || !series.data) return;
-            var color = series.color || '#bbbbbb';
-            var yaxis = (series.yaxis === 2) ? 'y2' : 'y';
-            
-            // 1. Vertical lines for each peak
-            for (var i = 0; i < series.data.length; i++) {
-                var mz = series.data[i][0];
-                var intensity = series.data[i][1];
-                traces.push({
-                    x: [mz, mz],
-                    y: [0, intensity],
-                    mode: 'lines',
-                    line: {color: color, width: 1},
-                    hovertemplate: 'm/z: %{x:.1f}<br>intensity: %{y:.0f}<extra></extra>',
-                    showlegend: false,
-                    yaxis: yaxis
-                });
-            }
-            
-            // 2. Text labels above each peak (if present)
-            if (series.labels && series.labels.length) {
-                var label_x = [], label_y = [], label_text = [];
-                // Use a fixed offset in y units (e.g., 1% of max y in the plot)
-                var yOffset = maxInt * 0.01 || 1; // fallback to 1 if maxInt is 0
-                for (var i = 0; i < series.data.length; i++) {
-                    if (series.labels[i]) {
-                        label_x.push(series.data[i][0]);
-                        label_y.push(series.data[i][1] + yOffset); // fixed offset above peak
-                        label_text.push(series.labels[i]);
-                    }
-                }
-                if (label_x.length > 0) {
-                    traces.push({
-                        x: label_x,
-                        y: label_y,
-                        text: label_text,
-                        mode: 'text',
-                        textposition: 'top center',
-                        textfont: {color: color, size: 12},
-                        hoverinfo: 'none',
-                        showlegend: false,
-                        yaxis: yaxis
-                    });
-                }
-            }
-        });
-
-        // Layout with percentage y-axis formatting
-        var xrange = getPlotXRange(options);
-        var layout = {
-            width: width,
-            height: height,
-            margin: {l: 60, r: 20, t: 25, b: 20},
-            xaxis: {
-                title: 'm/z',
-                range: zoomRange && zoomRange.xaxis ? [zoomRange.xaxis.from, zoomRange.xaxis.to] : [xrange.xmin, xrange.xmax],
-                zeroline: false,
-                linecolor: '#000000',
-                linewidth: 0.5,
-                mirror: true,
-                tickfont: {
-                    size: 10
-                },
-                fixedrange: false  // x-axis zoomable
-            },
-            yaxis: {
-                title: 'Intensity',
-                zeroline: false,
-                rangemode: 'tozero',
-                fixedrange: false,
-                // Format y-axis as percentages
-                tickformat: '.0%',
-                tickvals: [0, maxInt*0.1, maxInt*0.2, maxInt*0.3, maxInt*0.4, maxInt*0.5,
-                        maxInt*0.6, maxInt*0.7, maxInt*0.8, maxInt*0.9, maxInt],
-                ticktext: ['0%', '10%', '20%', '30%', '40%', '50%', 
-                        '60%', '70%', '80%', '90%', '100%'],
-                linecolor: '#000000',
-                linewidth: 0.5,
-                mirror: true,
-                tickfont: {
-                    size: 10
-                },
-                fixedrange: true,  // disable y-axis zoom/pan
-                autorange: true    // auto-rescale y-axis on x-zoom
-            },
-            bargap: 0.1,
-            hovermode: 'closest',
-            showlegend: true,
-            autosize: false,
-            plot_bgcolor: 'white',
-            paper_bgcolor: 'white',
-            dragmode: 'zoom',  // allows box zoom
-        };
-        
-        // Support butterfly (double y-axis) plot
-        var hasSecondYAxis = datasets.some(s => s.yaxis === 2);
-        if (hasSecondYAxis) {
-            var maxIntDown = 0;
-            // Find max intensity for second y-axis
-            datasets.forEach(function(series) {
-                if (series.yaxis === 2 && series.data) {
-                    series.data.forEach(function(point) {
-                        if (point[1] > maxIntDown) maxIntDown = point[1];
-                    });
-                }
-            });
-            
-            layout.yaxis2 = {
-                overlaying: 'y',
-                side: 'bottom',
-                rangemode: 'tozero',
-                zeroline: false,
-                // Format second y-axis as percentages
-                tickformat: '.0%',
-                tickvals: [0, maxIntDown*0.1, maxIntDown*0.2, maxIntDown*0.3, maxIntDown*0.4, maxIntDown*0.5,
-                        maxIntDown*0.6, maxIntDown*0.7, maxIntDown*0.8, maxIntDown*0.9, maxIntDown],
-                ticktext: ['0%', '10%', '20%', '30%', '40%', '50%', 
-                        '60%', '70%', '80%', '90%', '100%'],
-                // Transform for butterfly effect
-                scaleanchor: 'y',
-                scaleratio: -1,
-                linecolor: '#000000',
-                linewidth: 0.5,
-                mirror: true,
-                tickfont: {
-                    size: 10
-                }
-            };
+	var plot;
+	if(!container.data("zoomRange"))
+        {
+            plot = $.plot($(getElementSelector(container, elementIds.msmsplot)), datasets,  container.data("plotOptions"));
         }
+	else {
+            var zoomRange = container.data("zoomRange");
+            var selectOpts = {};
+	    if($(getElementSelector(container, elementIds.zoom_x)).is(":checked"))
+		selectOpts.xaxis = { min: zoomRange.xaxis.from, max: zoomRange.xaxis.to };
+	    if($(getElementSelector(container, elementIds.zoom_y)).is(":checked"))
+		selectOpts.yaxis = { min: 0, max: zoomRange.yaxis.to };
 
-        const sequence = getModifiedSequence(options);
+	    plot = $.plot(getElementSelector(container, elementIds.msmsplot), datasets,
+			  $.extend(true, {}, container.data("plotOptions"), selectOpts));
 
-        const faFileSvgIcon = {
-            width: 384,
-            height: 512,
-            path: 'M320 464c8.8 0 16-7.2 16-16l0-288-80 0c-17.7 0-32-14.3-32-32l0-80L64 48c-8.8 0-16 7.2-16 16l0 384c0 8.8 7.2 16 16 16l256 0zM0 64C0 28.7 28.7 0 64 0L229.5 0c17 0 33.3 6.7 45.3 18.7l90.5 90.5c12 12 18.7 28.3 18.7 45.3L384 448c0 35.3-28.7 64-64 64L64 512c-35.3 0-64-28.7-64-64L0 64z'
-        };
+	    // zoom out icon on plot right hand corner
+	    var o = plot.getPlotOffset();
+	    $(getElementSelector(container, elementIds.msmsplot)).append('<div id="'+getElementId(container, elementIds.ms2plot_zoom_out)+'" class="zoom_out_link" style="position:absolute; left:'
+									 + (o.left + plot.width() - 20) + 'px;top:' + (o.top+4) + 'px"></div>');
 
-        const customSvgDownloadButton = {
-            name: 'custom-svg-download',
-            title: 'Download SVG',
-            icon: faFileSvgIcon,
-            click: function(gd) {
-            Plotly.downloadImage(gd, { format: 'svg', filename: sequence + '_lorikeet' });
-            }
-        };
-        
-        const faFileImageRegular = {
-            width: 384,
-            height: 512,
-            path: 'M64 464c-8.8 0-16-7.2-16-16L48 64c0-8.8 7.2-16 16-16l160 0 0 80c0 17.7 14.3 32 32 32l80 0 0 288c0 8.8-7.2 16-16 16L64 464zM64 0C28.7 0 0 28.7 0 64L0 448c0 35.3 28.7 64 64 64l256 0c35.3 0 64-28.7 64-64l0-293.5c0-17-6.7-33.3-18.7-45.3L274.7 18.7C262.7 6.7 246.5 0 229.5 0L64 0zm96 256a32 32 0 1 0 -64 0 32 32 0 1 0 64 0zm69.2 46.9c-3-4.3-7.9-6.9-13.2-6.9s-10.2 2.6-13.2 6.9l-41.3 59.7-11.9-19.1c-2.9-4.7-8.1-7.5-13.6-7.5s-10.6 2.8-13.6 7.5l-40 64c-3.1 4.9-3.2 11.1-.4 16.2s8.2 8.2 14 8.2l48 0 32 0 40 0 72 0c6 0 11.4-3.3 14.2-8.6s2.4-11.6-1-16.5l-72-104z'
-        };
+	    $(getElementSelector(container, elementIds.ms2plot_zoom_out)).click( function() {
+                resetZoom(container);
+	    });
+	}
 
-        const customDownloadPngButton = {
-            name: 'custom-png-download',
-            title: 'Download PNG',
-            icon: faFileImageRegular,
-            click: function(gd) {
-                    Plotly.downloadImage(gd, {
-                    format: 'png',
-                    filename: sequence + '_lorikeet',
-                    scale: 2
-                });
-            }
-        };
+	// we have re-calculated and re-drawn everything..
+	container.data("massTypeChanged", false);
+	container.data("massErrorChanged",false);
+	container.data("peakAssignmentTypeChanged", false);
+	container.data("peakLabelTypeChanged", false);
+	container.data("selectedNeutralLossChanged", false);
+	container.data("plot", plot);
 
-        const customResetZoomButton = {
-            name: 'reset_zoom',
-            title: 'Reset Zoom',
-            icon: Plotly.Icons.autoscale,
-            click: function(gd) {
-                const container = $(gd).closest('.lorikeet');
-                const options = container.data('options');
-                const xrange = getPlotXRange(options); // safer than relying on closure 
-                if (!xrange) {
-                    console.log("No xrange!!");
-                    return;  // avoid crash if not initialized
-                }
-
-                const plots = [
-                    container.data('msmsPlotDiv')?.[0],
-                    container.data('massErrorPlotDiv')?.[0]
-                ];
-
-                // Reset x and y on MS/MS and mass errors plots
-                plots.forEach(plot => {
-                    if (plot) {
-                        Plotly.relayout(plot, {
-                            'xaxis.range': [xrange.xmin, xrange.xmax],
-                            'xaxis.autorange': false,
-                            'yaxis.autorange': true,
-                            'customResetZoom': true // non-standard, but passed in eventdata. Distinguish from double-click
-                        });
-                    }
-                });
-
-                container.data('zoomRange', null); // Clear the shared zoom state
-            }
-        };
-
-        Plotly.newPlot(plotDiv[0], traces, layout, 
-            {
-                modeBarButtons: [[
-                    customSvgDownloadButton,
-                    customDownloadPngButton,
-                    customResetZoomButton
-                ]],
-                toImageButtonOptions: {
-                    format: 'svg',
-                    filename: sequence + '_lorikeet'
-                },
-                displaylogo: false,
-                displayModeBar: true,
-                responsive: false
-            }
-        )
-        .then(() => {
-            // Save initial y-axis range
-            const initialYRange = plotDiv[0].layout.yaxis.range.slice(); // Copy the current range
-            container.data("initialYRange", initialYRange);
-
-            // Attach event handlers after plot is created
-            handleZoomSync(plotDiv, container, true);  // true = isMsmsPlot
-        });
-
-        // we have re-calculated and re-drawn everything..
-        container.data("massTypeChanged", false);
-        container.data("massErrorChanged", false);
-        container.data("peakAssignmentTypeChanged", false);
-        container.data("peakLabelTypeChanged", false);
-        container.data("selectedNeutralLossChanged", false);
-        container.data("plot", plotDiv[0]);
-        container.data("msmsPlotDiv", plotDiv); // Store reference to the MS/MS plot div
-        
-        // Draw the peak mass error plot (updated Plotly version)
+        // Draw the peak mass error plot
         plotPeakMassErrorPlot(container, datasets);
-        if(container.data("options").showMassErrorPlot === false) {
+        if(container.data("options").showMassErrorPlot === false)
+        {
             $(getElementSelector(container, elementIds.massErrorPlot)).hide();
         }
     }
@@ -1069,26 +677,20 @@ function createMs1Plot(container) {
         return {xmin:xmin - xpadding, xmax:xmax + xpadding};
     }
 
-    function plotPeakMassErrorPlot(container, datasets) 
-    {
+    function plotPeakMassErrorPlot(container, datasets) {
+        var data = [];
         var options = container.data("options");
-        var plotDiv = $(getElementSelector(container, elementIds.massErrorPlot));
 
         var ppmError = options.massErrorPlotDefaultUnit === massErrorTypePpm;
 
         var minMassError = 0;
         var maxMassError = 0;
-        var allMzValues = [];
-        var allMassErrors = [];
-        var seriesColors = [];
-
-        // Process datasets to extract mass error data
         for (var i = 0; i < datasets.length; i += 1) {
             var series = datasets[i];
             var seriesType = series.labelType;
             if (seriesType && seriesType === 'ion') {
                 var seriesData = series.data;
-                var seriesColor = series.color || '#000000';
+                var s_data = [];
                 for (var j = 0; j < seriesData.length; j += 1) {
                     var observedMz = seriesData[j][0];
                     var theoreticalMz = seriesData[j][2];
@@ -1098,434 +700,86 @@ function createMs1Plot(container) {
                     }
                     minMassError = Math.min(minMassError, massError);
                     maxMassError = Math.max(maxMassError, massError);
-                    allMzValues.push(observedMz);
-                    allMassErrors.push(massError);
-                    seriesColors.push(seriesColor);
+                    s_data.push([seriesData[j][0], massError]);
                 }
+                data.push({data:s_data, color:series.color, labelType:'none'});
             }
         }
 
-        // Clear any existing plot
-        plotDiv.empty();
+        var placeholder = $(getElementSelector(container, elementIds.massErrorPlot));
 
-        // If no data, create empty plot
-        if (allMzValues.length === 0) {
-            var __xrange = getPlotXRange(options);
-            allMzValues = [__xrange.xmin];
-            allMassErrors = [0];
-            minMassError = maxMassError = 0;
-        }
-
-        // Create Plotly trace with colored points from series colors
-        var trace = {
-            x: allMzValues,
-            y: allMassErrors,
-            mode: 'markers',
-            type: 'scatter',
-            marker: {
-                size: 4,
-                color: seriesColors.length > 0 ? seriesColors : '#000000'
-            },
-            hovertemplate: 'm/z: %{x:.2f}<br>error: %{y:.4f}<extra></extra>',
-            showlegend: false
-        };
-
-        var traces = [trace];
-
-        // Get x-axis range
         var __xrange = getPlotXRange(options);
         var zoomRange = container.data("zoomRange");
-        var xAxisRange = [__xrange.xmin, __xrange.xmax];
-        
-        if (zoomRange) {
-            // Sync zooming with the MS/MS plot
-            xAxisRange = [zoomRange.xaxis.from, zoomRange.xaxis.to];
+        if(zoomRange)
+        {
+            // Sync zooming with the MS/MS plot.
+            __xrange.xmin = zoomRange.xaxis.from;
+            __xrange.xmax = zoomRange.xaxis.to;
         }
 
-        // Calculate y-axis range with padding
         var ypadding = Math.abs(maxMassError - minMassError) * 0.025;
-        var yAxisRange = [minMassError - ypadding, maxMassError + ypadding];
 
-        // Layout configuration
-        var layout = {
-            width: options.width || 700,
-            height: 120,
-            margin: {l: 60, r: 20, t: 20, b: 40},
-            xaxis: {
-                title: 'm/z',
-                range: xAxisRange,
-                zeroline: false,
-                showgrid: true,
-                gridcolor: '#f0f0f0',
-                linecolor: '#000000',
-                linewidth: 0.5,
-                mirror: true,
-                fixedrange: false,
-                tickfont: {
-                    size: 10
-                }
-            },
-            yaxis: {
-                title: 'Mass Error',
-                range: yAxisRange,
-                zeroline: true,
-                zerolinecolor: '#555555',
-                zerolinewidth: 1,
-                showgrid: true,
-                gridcolor: '#f0f0f0',
-                linecolor: '#000000',
-                linewidth: 0.5,
-                mirror: true,
-                fixedrange: true,
-                tickfont: {
-                    size: 10
-                },
-                tickformat: '.2f'
-            },
-            plot_bgcolor: 'white',
-            paper_bgcolor: 'white',
-            hovermode: 'closest',
-            showlegend: false,
-            autosize: false
+        // the MS/MS plot should have been created by now.  This is a hack to get the plots aligned.
+        // We will set the y-axis labelWidth to this value.
+        var labelWidth = container.data("plot").getAxes().yaxis.labelWidth;
+
+        if(data.length === 0)
+        {
+            // Add dummy data to show an empty plot.
+            data.push({data:[__xrange.xmin, 0], color:'#000000', labelType:'none'});
+        }
+
+        var massErrorPlotOptions = {
+            series:{data:data, points:{show:true, fill:true, radius:1}, shadowSize:0},
+            grid:{ show:true,
+                   hoverable:true,
+                   autoHighlight:false,
+                   clickable:false,
+                   borderWidth:1,
+                   labelMargin:1,
+                   markings:[
+                       {yaxis:{from:0, to:0}, color:"#555555", lineWidth:0.5}
+                   ]  // draw a horizontal line at y=0
+		 },
+            selection:{ mode:"xy", color:"#F0E68C" },
+            xaxis:{ tickLength:3, tickColor:"#000",
+                    min:__xrange.xmin,
+                    max:__xrange.xmax},
+            yaxis:{ tickLength:0, tickColor:"#fff",
+                    min:minMassError - ypadding,
+                    max:maxMassError + ypadding,
+                    labelWidth:labelWidth }
         };
 
-        // Create the plot
-        Plotly.newPlot(plotDiv[0], traces, layout, {displayModeBar: false, responsive: false});
 
-        // Add mass error unit toggle button
-        // First ensure the plot div has relative positioning
-        plotDiv.css('position', 'relative');
-
-        var unitButtonId = getElementId(container, elementIds.massErrorPlot_unit);
-        if ($('#' + unitButtonId).length === 0) {
-            plotDiv.append('<div id="' + unitButtonId + '" class="link" ' +
-                'style="position:absolute; left:65px; top:25px; ' +
-                'background-color:#e9ecef; border:1px solid #dee2e6; border-radius:2px; ' +
-                'font-size:10px; font-weight:bold; color:red; padding:2px 4px; ' +
-                'cursor:pointer; z-index:10; transition:all 0.2s ease; ' +
-                'box-shadow:0 1px 1px rgba(0,0,0,0.1); user-select:none;">' +
-                options.massErrorPlotDefaultUnit + '</div>');
-
-            // Add hover effects
-            $('#' + unitButtonId).hover(
-                function() {
-                    $(this).css({
-                        'background-color': '#e9ecef',
-                        'border-color': '#adb5bd',
-                        'box-shadow': '0 2px 2px rgba(0,0,0,0.15)'
-                    });
-                },
-                function() {
-                    $(this).css({
-                        'background-color': '#f8f9fa',
-                        'border-color': '#dee2e6',
-                        'box-shadow': '0 1px 1px rgba(0,0,0,0.1)'
-                    });
-                }
-            );
-
-            // Toggle mass error unit on click
-            $('#' + unitButtonId).click(function () {
-                var unit = $(this).text();
-                
-                if (unit === massErrorTypeTh) {
-                    $(this).text(massErrorTypePpm);
-                    options.massErrorPlotDefaultUnit = massErrorTypePpm;
-                } else if (unit === massErrorTypePpm) {
-                    $(this).text(massErrorTypeTh);
-                    options.massErrorPlotDefaultUnit = massErrorTypeTh;
-                }
-                
-                // Replot with new unit
-                plotPeakMassErrorPlot(container, datasets);
-            });
-        }
-
-        // Set up plot event handlers for hover tooltips
-        plotDiv[0].on('plotly_hover', function(eventData) {
-            if ($(getElementSelector(container, elementIds.enableTooltip) + ":checked").length > 0) {
-                var point = eventData.points[0];
-                var x = point.x.toFixed(2);
-                var y = point.y.toFixed(4);
-                
-                // Remove any existing tooltip
-                $(getElementSelector(container, elementIds.msmstooltip)).remove();
-                
-                // Show custom tooltip
-                showTooltip(container, point.event.pageX, point.event.pageY, 
-                    "m/z: " + x + "<br>error: " + y, options);
-            }
+        // TOOLTIPS
+        $(getElementSelector(container, elementIds.massErrorPlot)).bind("plothover", function (event, pos, item) {
+            displayTooltip(item, container, options, "m/z", "error");
         });
 
-        plotDiv[0].on('plotly_unhover', function() 
-        {
-            $(getElementSelector(container, elementIds.msmstooltip)).remove();
+        var massErrorPlot = $.plot(placeholder, data, massErrorPlotOptions);
+
+        // Display clickable mass error unit.
+        var o = massErrorPlot.getPlotOffset();
+        placeholder.append('<div id="' + getElementId(container, elementIds.massErrorPlot_unit) + '" class="link"  '
+			   + 'style="position:absolute; left:'
+			   + (o.left + 5) + 'px;top:' + (o.top + 4) + 'px;'
+			   + 'background-color:yellow; font-style:italic">'
+			   + options.massErrorPlotDefaultUnit + '</div>');
+        // Toggle mass error unit on click.
+        $(getElementSelector(container, elementIds.massErrorPlot_unit)).click(function () {
+            var unit = $(this).text();
+
+            if (unit === massErrorTypeTh) {
+                $(this).text(massErrorTypePpm);
+                options.massErrorPlotDefaultUnit = massErrorTypePpm;
+            }
+            else if (unit === massErrorTypePpm) {
+                $(this).text(massErrorTypeTh);
+                options.massErrorPlotDefaultUnit = massErrorTypeTh;
+            }
+            plotPeakMassErrorPlot(container, datasets);
         });
-
-        // Handle plot relayout events (zoom/pan)
-        plotDiv[0].on('plotly_relayout', function(eventdata) 
-        {
-            handleZoomSyncMassErrorPlot(plotDiv, container);
-        });
-
-        container.data("massErrorPlotDiv", plotDiv); // Store reference to the mass error plot div
-    }
-
-    function handleZoomSyncMassErrorPlot(plotDiv, container) {
-
-        // Prevent buildup of event listeners. Causes the following warning:
-        // MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 plotly_relayout listeners added
-        if (plotDiv[0]._hasRelayoutHandler) 
-        {
-            console.error("Relayout handler already attached for mass error plot");
-            return; 
-        }
-        plotDiv[0]._hasRelayoutHandler = true; // set a flag to prevent multiple handlers
-
-
-        // Handle zooming and relayout events mass errors plot
-        plotDiv[0].on('plotly_relayout', function(eventdata) {
-
-            console.log("relayout triggered by mass error plot", eventdata);
-
-            if (eventdata.customResetZoom === true)
-            {
-                console.log('Custom reset zoom button used. Let Plotly handle the relayout. Both plots will be reset.');
-                return;
-            }
-            
-            // Check if this is a zoom event
-            const isZoom = (
-                typeof eventdata['xaxis.range[0]'] !== 'undefined' &&
-                typeof eventdata['xaxis.range[1]'] !== 'undefined'
-            );
-
-            const isDoubleClickZoomReset = (
-                Array.isArray(eventdata['xaxis.range']) &&
-                !('yaxis.range' in eventdata) &&
-                !('customResetZoom' in eventdata)
-            );
-
-            if (!isZoom && !isDoubleClickZoomReset) {
-                console.log("Ignoring non-zoom relayout:", eventdata);
-                return;
-            }
-
-            if (isZoom) {
-
-                console.log("Zooming in mass error plot");
-                const zoomRange = container.data("zoomRange") || { xaxis: {}, yaxis: {} };
-                zoomRange.xaxis.from = eventdata['xaxis.range[0]'];
-
-                zoomRange.xaxis.to   = eventdata['xaxis.range[1]'];
-                if (isMsmsPlot && eventdata['yaxis.range[1]']) {
-                    zoomRange.yaxis.to = eventdata['yaxis.range[1]'];
-                }
-                container.data("zoomRange", zoomRange);
- 
-                const xMin = zoomRange.xaxis.from;
-                const xMax = zoomRange.xaxis.to;
-                
-                const datasets = getDatasets(container);
-                let yMax = 0;
-
-                // Manually compute y-axis max in current x-range
-                datasets.forEach(series => {
-                    if (series && series.data) {
-                        const max = getMaxIntensityInRange(series.data, xMin, xMax);
-                        if (max > yMax) yMax = max;
-                    }
-                });
-
-                const yPadding = 1.15; // or 1.10 for more room above peaks
-                let paddedYMax = yMax * yPadding;
-
-
-                const msmsPlot = container.data('msmsPlotDiv')?.[0];
-                // Apply new x-range and manual y-range
-                Plotly.relayout(msmsplot, {
-                    'xaxis.range': [xMin, xMax],
-                    'yaxis.range': [0, paddedYMax],
-                    'yaxis.fixedrange': true
-                });
-            } 
-            else if (isDoubleClickZoomReset) {
-                container.data("zoomRange", null);
-                console.log("Resetting zoom (double-click reset) in " + (isMsmsPlot ? "MS/MS" : "mass error") + " plot");
-                if (isMsmsPlot) {
-
-                    const xrange = getPlotXRange(container.data("options"));
-                    
-                    Plotly.relayout(plotDiv[0], {
-                            'xaxis.range': [xrange.xmin, xrange.xmax],
-                            'xaxis.autorange': false,
-                            'yaxis.autorange': true,
-                            'customResetZoom': true // Otherwise we go in an infinite loop
-                    });
-                } 
-                else 
-                {
-                    console.log("Other relayout triggered", eventdata);
-                }
-            }
-        });
-    }
-
-    function handleZoomSync(plotDiv, container, isMsmsPlot) {
-
-        // Prevent buildup of event listeners. Causes the following warning:
-        // MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 plotly_relayout listeners added
-        if (plotDiv[0]._hasRelayoutHandler) 
-        {
-            console.error("Relayout handler already attached for " + (isMsmsPlot ? "MS/MS" : "mass error") + " plot");
-            return; 
-        }
-        plotDiv[0]._hasRelayoutHandler = true; // set a flag to prevent multiple handlers
-
-        // Handle zooming and relayout events for MS/MS and mass errors plots
-        plotDiv[0].on('plotly_relayout', function(eventdata) {
-
-            console.log("relayout triggered by " + (isMsmsPlot ? "MS/MS" : "mass error") + " plot", eventdata);
-
-            if (eventdata.customResetZoom === true)
-            {
-                console.log('Custom reset zoom button used.');
-                // Let Plotly reset the source plot
-                // TODO: This should zoom out the linked plot.
-            
-                return;
-            }
-            
-            // Check if this is a zoom event
-            const isZoom = (
-                typeof eventdata['xaxis.range[0]'] !== 'undefined' &&
-                typeof eventdata['xaxis.range[1]'] !== 'undefined'
-            );
-
-            const isDoubleClickZoomReset = (
-                Array.isArray(eventdata['xaxis.range']) &&
-                !('yaxis.range' in eventdata) &&
-                !('customResetZoom' in eventdata)
-            );
-
-            if (!isZoom && !isDoubleClickZoomReset) {
-                console.log("Ignoring non-zoom relayout:", eventdata);
-                return;
-            }
-
-
-            if (isZoom) {
-
-                console.log("Zooming in " + (isMsmsPlot ? "MS/MS" : "mass error") + " plot");
-                const zoomRange = container.data("zoomRange") || { xaxis: {}, yaxis: {} };
-                zoomRange.xaxis.from = eventdata['xaxis.range[0]'];
-
-                zoomRange.xaxis.to   = eventdata['xaxis.range[1]'];
-                if (isMsmsPlot && eventdata['yaxis.range[1]']) {
-                    zoomRange.yaxis.to = eventdata['yaxis.range[1]'];
-                }
-                container.data("zoomRange", zoomRange);
-
-                if (isMsmsPlot) {
-                    
-                    const xMin = zoomRange.xaxis.from;
-                    const xMax = zoomRange.xaxis.to;
-                    
-                    const datasets = getDatasets(container);
-                    let yMax = 0;
-
-                    // Manually compute y-axis max in current x-range
-                    datasets.forEach(series => {
-                        if (series && series.data) {
-                            const max = getMaxIntensityInRange(series.data, xMin, xMax);
-                            if (max > yMax) yMax = max;
-                        }
-                    });
-
-                    const yPadding = 1.15; // or 1.10 for more room above peaks
-                    let paddedYMax = yMax * yPadding;
-
-                    // Apply new x-range and manual y-range
-                    Plotly.relayout(plotDiv[0], {
-                        'xaxis.range': [xMin, xMax],
-                        'yaxis.range': [0, paddedYMax],
-                        'yaxis.fixedrange': true
-                    });
-                    
-                    // Sync zoom with mass error plot
-                    const errorPlot = container.data('massErrorPlotDiv')?.[0];
-                    const xrange = getPlotXRange(container.data('options'));
-                    
-                    if (errorPlot && xrange) {
-                        console.log("Syncing zoom with mass error plot");
-                        Plotly.relayout(errorPlot, {
-                            'xaxis.range': [xrange.xmin, xrange.xmax],
-                            'xaxis.autorange': false,
-                            'yaxis.autorange': true
-                        });
-                    }
-                    else {
-                        console.error("Error plot or xrange is null in handleZoomSync");
-                    }
-                }
-                else 
-                {
-                   console.log("Would do something for mass error plot here, but not implemented yet.");
-                }
-            } 
-            else if (isDoubleClickZoomReset) {
-                container.data("zoomRange", null);
-                console.log("Resetting zoom (double-click reset) in " + (isMsmsPlot ? "MS/MS" : "mass error") + " plot");
-                if (isMsmsPlot) {
-
-                    const xrange = getPlotXRange(container.data("options"));
-                    
-                    Plotly.relayout(plotDiv[0], {
-                            'xaxis.range': [xrange.xmin, xrange.xmax],
-                            'xaxis.autorange': false,
-                            'yaxis.autorange': true,
-                            'customResetZoom': true // Otherwise we go in an infinite loop
-                    });
-                } 
-                else 
-                {
-                    console.log("Other relayout triggered", eventdata);
-                }
-            }
-        });
-    }
-
-    function getMaxIntensityInRange(data, xMin, xMax) {
-        // Assumes data is sorted by m/z
-        let start = 0, end = data.length - 1;
-
-        // Binary search for first index >= xMin
-        while (start < end) {
-            const mid = Math.floor((start + end) / 2);
-            if (data[mid][0] < xMin) start = mid + 1;
-            else end = mid;
-        }
-
-        const iMin = start;
-
-        // Binary search for first index > xMax
-        start = 0;
-        end = data.length;
-        while (start < end) {
-            const mid = Math.floor((start + end) / 2);
-            if (data[mid][0] <= xMax) start = mid + 1;
-            else end = mid;
-        }
-
-        const iMax = start;
-
-        // Now just loop over relevant slice
-        let maxY = 0;
-        for (let i = iMin; i < iMax; i++) {
-            if (data[i][1] > maxY) maxY = data[i][1];
-        }
-
-        return maxY;
     }
 
     function displayTooltip(item, container, options, tooltip_xlabel, tooltip_ylabel) {
@@ -1554,103 +808,123 @@ function createMs1Plot(container) {
     // SET UP INTERACTIVE ACTIONS FOR MS/MS PLOT
     // -----------------------------------------------
     function setupInteractions (container, options) {
-        // ZOOMING and TOOLTIPS are handled by Plotly for MS/MS plot
 
-        // ZOOM AXES
-        $(getElementSelector(container, elementIds.zoom_x)).click(function() {
-            resetAxisZoom(container);
-        });
-        $(getElementSelector(container, elementIds.zoom_y)).click(function() {
-            resetAxisZoom(container);
-        });
+	// ZOOMING
+	$(getElementSelector(container, elementIds.msmsplot)).bind("plotselected", function (event, ranges) {
+	    container.data("zoomRange", ranges);
+	    createPlot(container, getDatasets(container));
+	});
 
-        // RESET ZOOM
-        $(getElementSelector(container, elementIds.resetZoom)).click(function() {
-            resetZoom(container);
-        });
+	// ZOOM AXES
+	$(getElementSelector(container, elementIds.zoom_x)).click(function() {
+	    resetAxisZoom(container);
+	});
+	$(getElementSelector(container, elementIds.zoom_y)).click(function() {
+	    resetAxisZoom(container);
+	});
 
-        // UPDATE
-        $(getElementSelector(container, elementIds.update)).click(function() {
-            container.data("zoomRange", null); // zoom out fully
-            setMassError(container);
-            plotAccordingToChoices(container);
-        });
+	// RESET ZOOM
+	$(getElementSelector(container, elementIds.resetZoom)).click(function() {
+	    resetZoom(container);
+	});
+
+	// UPDATE
+	$(getElementSelector(container, elementIds.update)).click(function() {
+	    container.data("zoomRange", null); // zoom out fully
+	    setMassError(container);
+	    plotAccordingToChoices(container);
+	});
+
+	// TOOLTIPS
+	$(getElementSelector(container, elementIds.msmsplot)).bind("plothover", function (event, pos, item) {
+	    displayTooltip(item, container, options, "m/z", "intensity");
+	});
+	$(getElementSelector(container, elementIds.enableTooltip)).click(function() {
+	    $(getElementSelector(container, elementIds.msmstooltip)).remove();
+	});
 
         // PLOT MASS ERROR CHECKBOX
         $(getElementSelector(container, elementIds.massErrorPlot_option)).click(function() {
-            var plotDiv = $(getElementSelector(container, elementIds.massErrorPlot));
-            if($(this).is(':checked')) {
+	    var plotDiv = $(getElementSelector(container, elementIds.massErrorPlot));
+	    if($(this).is(':checked'))
+	    {
                 plotDiv.show();
-            } else {
+	    }
+	    else
+	    {
                 plotDiv.hide();
-            }
+	    }
         });
 
-        // SHOW / HIDE ION SERIES; UPDATE ON MASS TYPE CHANGE;
-        // PEAK ASSIGNMENT TYPE CHANGED; PEAK LABEL TYPE CHANGED
-        var ionChoiceContainer = $(getElementSelector(container, elementIds.ion_choice));
-        ionChoiceContainer.find("input").click(function() {
-            plotAccordingToChoices(container);
+
+	// SHOW / HIDE ION SERIES; UPDATE ON MASS TYPE CHANGE;
+	// PEAK ASSIGNMENT TYPE CHANGED; PEAK LABEL TYPE CHANGED
+	var ionChoiceContainer = $(getElementSelector(container, elementIds.ion_choice));
+	ionChoiceContainer.find("input").click(function() {
+	    plotAccordingToChoices(container);
         });
 
         $(getElementSelector(container, elementIds.immoniumIons)).click(function() {
-            plotAccordingToChoices(container);
+	    plotAccordingToChoices(container);
         });
 
         $(getElementSelector(container, elementIds.reporterIons)).click(function() {
-            plotAccordingToChoices(container);
+	    plotAccordingToChoices(container);
         });
 
         $(getElementSelector(container, elementIds.labelPrecursor)).click(function() {
-            plotAccordingToChoices(container);
-        });
+	    plotAccordingToChoices(container);
+	});
 
-        // Plot neutral loss options
-        var neutralLossContainer = $(getElementSelector(container, elementIds.nl_choice));
-        neutralLossContainer.find("input").click(function() {
-            container.data("selectedNeutralLossChanged", true);
-            var selectedNeutralLosses = getNeutralLosses(container);
-            container.data("options").peptide.recalculateLossOptions(selectedNeutralLosses, container.data("options").maxNeutralLossCount);
-            plotAccordingToChoices(container);
-        });
+	// Plot neutral loss options
+	var neutralLossContainer = $(getElementSelector(container, elementIds.nl_choice));
+	neutralLossContainer.find("input").click(function() {
+	    container.data("selectedNeutralLossChanged", true);
+	    var selectedNeutralLosses = getNeutralLosses(container);
+	    container.data("options").peptide.recalculateLossOptions(selectedNeutralLosses, container.data("options").maxNeutralLossCount);
+	    plotAccordingToChoices(container);
+	});
 
         // Mass type options
-        container.find("input[name='"+getRadioName(container, "massTypeOpt")+"']").click(function() {
-            container.data("massTypeChanged", true);
-            plotAccordingToChoices(container);
-        });
+	container.find("input[name='"+getRadioName(container, "massTypeOpt")+"']").click(function() {
+	    container.data("massTypeChanged", true);
+	    plotAccordingToChoices(container);
+	});
 
         // Peak detect checkbox
         $(getElementSelector(container, elementIds.peakDetect)).click(function() {
-            container.data("peakAssignmentTypeChanged", true);
-            plotAccordingToChoices(container);
+	    container.data("peakAssignmentTypeChanged", true);
+	    plotAccordingToChoices(container);
         });
 
-        container.find("input[name='"+getRadioName(container, "peakAssignOpt")+"']").click(function() {
-            container.data("peakAssignmentTypeChanged", true);
-            plotAccordingToChoices(container);
-        });
+	container.find("input[name='"+getRadioName(container, "peakAssignOpt")+"']").click(function() {
+	    container.data("peakAssignmentTypeChanged", true);
+	    plotAccordingToChoices(container);
+	});
 
         $(getElementSelector(container, elementIds.deselectIonsLink)).click(function() {
-            ionChoiceContainer.find("input:checkbox:checked").each(function() {
-                $(this).attr('checked', "");
-            });
-            plotAccordingToChoices(container);
-        });
+	    ionChoiceContainer.find("input:checkbox:checked").each(function() {
+		$(this).attr('checked', "");
+	    });
 
-        container.find("input[name='"+getRadioName(container, "peakLabelOpt")+"']").click(function() {
-            container.data("peakLabelTypeChanged", true);
-            plotAccordingToChoices(container);
-        });
+	    plotAccordingToChoices(container);
+	});
 
-        // MOVING THE ION TABLE
-        makeIonTableMovable(container, options);
+	container.find("input[name='"+getRadioName(container, "peakLabelOpt")+"']").click(function() {
+	    container.data("peakLabelTypeChanged", true);
+	    plotAccordingToChoices(container);
+	});
 
-        // CHANGING THE PLOT SIZE
-        makePlotResizable(container);
 
-        // PRINT SPECTRUM
-        printPlot(container);
+	// MOVING THE ION TABLE
+	makeIonTableMovable(container, options);
+
+	// CHANGING THE PLOT SIZE
+	makePlotResizable(container);
+
+	// PRINT SPECTRUM
+	printPlot(container);
+
     }
 
     function resetZoom(container) {
@@ -2697,20 +1971,20 @@ function createMs1Plot(container) {
 
         var rowspan = 2;
 
-        var parentTable = '<table cellpadding="0" cellspacing="5" class="lorikeet-outer-table"> ';
-        parentTable += '<tbody> ';
-        parentTable += '<tr> ';
+	var parentTable = '<table cellpadding="0" cellspacing="5" class="lorikeet-outer-table"> ';
+	parentTable += '<tbody> ';
+	parentTable += '<tr> ';
 
-        // Header
-        parentTable += '<td colspan="3" class="bar"> ';
-        parentTable += '</div> ';
-        parentTable += '</td> ';
-        parentTable += '</tr> ';
+	// Header
+	parentTable += '<td colspan="3" class="bar"> ';
+	parentTable += '</div> ';
+	parentTable += '</td> ';
+	parentTable += '</tr> ';
 
-        // options table
-        parentTable += '<tr> ';
-        parentTable += '<td rowspan="'+rowspan+'" valign="top" id="'+getElementId(container, elementIds.optionsTable)+'"> ';
-        parentTable += '</td> ';
+	// options table
+	parentTable += '<tr> ';
+	parentTable += '<td rowspan="'+rowspan+'" valign="top" id="'+getElementId(container, elementIds.optionsTable)+'"> ';
+	parentTable += '</td> ';
 
         if(options.showSequenceInfo) {
             // placeholder for sequence, m/z, scan number etc
@@ -2739,41 +2013,39 @@ function createMs1Plot(container) {
         }
 
 
-        parentTable += '<tr> ';
-        parentTable += '<td style="background-color: white; padding:5px; border:1px dotted #cccccc;" valign="top" align="center"> ';
-        // Placeholder for toolbar
-        parentTable += '<div id="'+getElementId(container, elementIds.toolbarDiv) + '" style="text-align: right; margin-bottom: 0px;"></div> ';
-	    // placeholders for the ms/ms plot
-	    parentTable += '<div id="'+getElementId(container, elementIds.msmsplot)+'" align="bottom" style="width:'+options.width+'px;height:'+options.height+'px; margin-top: 0px;"></div> ';
+	// placeholders for the ms/ms plot
+	parentTable += '<tr> ';
+	parentTable += '<td style="background-color: white; padding:5px; border:1px dotted #cccccc;" valign="top" align="center"> ';
+	parentTable += '<div id="'+getElementId(container, elementIds.msmsplot)+'" align="bottom" style="width:'+options.width+'px;height:'+options.height+'px;"></div> ';
 
-	    // placeholder for viewing options (zoom, plot size etc.)
-	    parentTable += '<div id="'+getElementId(container, elementIds.viewOptionsDiv)+'" align="top" valign="right" style="margin-top:15px;"></div> ';
+	// placeholder for viewing options (zoom, plot size etc.)
+	parentTable += '<div id="'+getElementId(container, elementIds.viewOptionsDiv)+'" align="top" style="margin-top:15px;"></div> ';
 
         // placeholder for peak mass error plot
         parentTable += '<div id="'+getElementId(container, elementIds.massErrorPlot)+'" style="width:'+options.width+'px;height:100px;"></div> ';
 
-	    // placeholder for ms1 plot (if data is available)
-	    if(options.ms1peaks && options.ms1peaks.length > 0) {
-	        parentTable += '<div id="'+getElementId(container, elementIds.msPlot)+'" style="width:'+options.width+'px;height:100px;"></div> ';
-	    }
-	    parentTable += '</td> ';
-	    parentTable += '</tr> ';
+	// placeholder for ms1 plot (if data is available)
+	if(options.ms1peaks && options.ms1peaks.length > 0) {
+	    parentTable += '<div id="'+getElementId(container, elementIds.msPlot)+'" style="width:'+options.width+'px;height:100px;"></div> ';
+	}
+	parentTable += '</td> ';
+	parentTable += '</tr> ';
 
 
-	    // Footer & placeholder for moving ion table
-        parentTable += '<tr> ';
-        parentTable += '<td colspan="3" class="bar noprint" valign="top" align="center" id="'+getElementId(container, elementIds.ionTableLoc2)+'" > ';
-        parentTable += '<div align="center" style="width:100%;font-size:10pt;"> ';
-        parentTable += '</div> ';
-        parentTable += '</td> ';
-        parentTable += '</tr> ';
+	// Footer & placeholder for moving ion table
+	parentTable += '<tr> ';
+	parentTable += '<td colspan="3" class="bar noprint" valign="top" align="center" id="'+getElementId(container, elementIds.ionTableLoc2)+'" > ';
+	parentTable += '<div align="center" style="width:100%;font-size:10pt;"> ';
+	parentTable += '</div> ';
+	parentTable += '</td> ';
+	parentTable += '</tr> ';
 
-        parentTable += '</tbody> ';
-        parentTable += '</table> ';
+	parentTable += '</tbody> ';
+	parentTable += '</table> ';
 
-        container.append(parentTable);
+	container.append(parentTable);
 
-        return container;
+	return container;
     }
 
 
@@ -2936,7 +2208,7 @@ function createMs1Plot(container) {
 	if(options.sequence) {
 
 	    specinfo += '<div>';
-	    specinfo += '<span style="font-weight:bold; color:#8B0000;">' + getModifiedSequenceHtml(options) + '</span>';
+	    specinfo += '<span style="font-weight:bold; color:#8B0000;">'+getModifiedSequenceHtml(options)+'</span>';
 
 	    var neutralMass = 0;
 
@@ -2979,11 +2251,19 @@ function createMs1Plot(container) {
         return modSeq;
     }
 
-    function getModifiedSequence(options) 
-{
-        return options.peptide.getModifiedSequence();
-    }
+    function getModifiedSequence(options) {
+        var modSeq = '';
+        for(var i = 0; i < options.sequence.length; i += 1) {
 
+            if(options.peptide.varMods()[i+1])
+            {
+                modSeq += ''+options.sequence.charAt(i)+"</span>";
+            }
+            else
+                modSeq += options.sequence.charAt(i);
+        }
+        return modSeq;
+    }
 
     //---------------------------------------------------------
     // FILE INFO -- filename, scan number, precursor m/z and charge
@@ -3165,23 +2445,23 @@ function createMs1Plot(container) {
 
         var options = container.data("options");
 
-        var myContent = '';
+	var myContent = '';
 
-        // reset zoom option
-        myContent += '<nobr> ';
-        myContent += '<span style="width:100%; font-size:8pt; margin-top:5px; color:sienna;">Click and drag in the plot to zoom</span> ';
-        myContent += 'X:<input id="'+getElementId(container, elementIds.zoom_x)+'" type="checkbox" value="X" checked="checked"/> ';
-        myContent += '&nbsp;Y:<input id="'+getElementId(container, elementIds.zoom_y)+'" type="checkbox" value="Y" /> ';
-        myContent += '&nbsp;<input id="'+getElementId(container, elementIds.resetZoom)+'" type="button" value="Zoom Out" /> ';
-        myContent += '&nbsp;<input id="'+getElementId(container, elementIds.printLink)+'" type="button" value="Print" /> ';
-        myContent += '</nobr> ';
+	// reset zoom option
+	myContent += '<nobr> ';
+	myContent += '<span style="width:100%; font-size:8pt; margin-top:5px; color:sienna;">Click and drag in the plot to zoom</span> ';
+	myContent += 'X:<input id="'+getElementId(container, elementIds.zoom_x)+'" type="checkbox" value="X" checked="checked"/> ';
+	myContent += '&nbsp;Y:<input id="'+getElementId(container, elementIds.zoom_y)+'" type="checkbox" value="Y" /> ';
+	myContent += '&nbsp;<input id="'+getElementId(container, elementIds.resetZoom)+'" type="button" value="Zoom Out" /> ';
+	myContent += '&nbsp;<input id="'+getElementId(container, elementIds.printLink)+'" type="button" value="Print" /> ';
+	myContent += '</nobr> ';
 
-        myContent += '&nbsp;&nbsp;';
+	myContent += '&nbsp;&nbsp;';
 
-        // tooltip option
-        myContent += '<nobr> ';
-        myContent += '<label><input id="'+getElementId(container, elementIds.enableTooltip)+'" type="checkbox">Enable tooltip </label>';
-        myContent += '</nobr> ';
+	// tooltip option
+	myContent += '<nobr> ';
+	myContent += '<label><input id="'+getElementId(container, elementIds.enableTooltip)+'" type="checkbox">Enable tooltip </label>';
+	myContent += '</nobr> ';
 
         // mass error plot option
         myContent += '<nobr>';
@@ -3193,16 +2473,14 @@ function createMs1Plot(container) {
         myContent += '>Plot mass error </label>';
         myContent += '</nobr>';
 
-        myContent += '<br>';
+	myContent += '<br>';
 
-        const elSelector = getElementSelector(container, elementIds.viewOptionsDiv);
-        $(elSelector).append(myContent);
-        if(options.showViewingOptions === false) 
-        {
-            // console.log("Hiding viewing options");
-            $(elSelector).hide();
+	$(getElementSelector(container, elementIds.viewOptionsDiv)).append(myContent);
+	if(!options.showViewingOptions) {
+            $(getElementSelector(container, elementIds.viewOptionsDiv)).hide();
         }
     }
+
 
     //---------------------------------------------------------
     // OPTIONS TABLE

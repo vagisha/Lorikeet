@@ -8,10 +8,8 @@
     <!--[if IE]><script language="javascript" type="text/javascript" src="../js/excanvas.min.js"></script><![endif]-->
     <script type="text/javascript" src="../js/jquery-3.5.1.min.js"></script>
     <script type="text/javascript" src="../js/jquery-ui-1.13.0.slider.min.js"></script>
-    <script type="text/javascript" src="../js/jquery.flot.js"></script>
-    <script type="text/javascript" src="../js/jquery.flot.selection.js"></script>
-
-    <script type="text/javascript" src="../js/specview-flot.js"></script>
+    <script type="text/javascript" src="../js/plotly.min.js"></script>
+    <script type="text/javascript" src="../js/specview.js"></script>
     <script type="text/javascript" src="../js/peptide.js"></script>
     <script type="text/javascript" src="../js/aminoacid.js"></script>
     <script type="text/javascript" src="../js/ion.js"></script>
@@ -65,7 +63,8 @@ $(document).ready(function () {
                                 "showSequenceInfo": true,
                                 "showOptionsTable": true,
                                 "showIonTable": true,
-                                "showViewingOptions": true,
+                                "showViewingOptions": false,
+                                "showToolbar": true,
                                 "showMassErrorPlot": true,
                                 "width": 700,
                                 "height": 450});
